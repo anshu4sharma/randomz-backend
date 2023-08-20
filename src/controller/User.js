@@ -2,6 +2,7 @@ const Users = require("../model/UserSchema");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const nodemailer = require("nodemailer");
+const { Generate_Referal_Id, isAlready_Verified } = require("../utils/Users");
 require("dotenv").config();
 const saltround = 10;
 const JWT_ACCESS_SECRET = process.env.JWT_ACCESS_SECRET;
@@ -57,7 +58,7 @@ module.exports = class UserController {
   };
 
   static signup = async (req, res) => {
-    const { email, password, referalId, otp } = req.body;
+    const { email, password, referedBy, otp } = req.body;
     if (!email || !password || !otp) {
       return res.status(403).json({
         message: "Please fill all the fields",
@@ -68,14 +69,47 @@ module.exports = class UserController {
         $and: [{ email: req.body.email }, { otp: req.body.otp }],
       });
       if (IsValid) {
+        if (IsValid.isVerified) {
+          return res.status(200).json({
+            message: "Already Verified !",
+          });
+        }
         let salt = await bcrypt.genSalt(saltround);
         let hash_password = await bcrypt.hash(password, salt);
+        if (referedBy) {
+          let referedByUser = await Users.findOne({ referalId: referedBy });
+          if (!referedByUser) {
+            return res.status(403).json({
+              message: "Invalid referal Id",
+            });
+          }
+          if (referedByUser.isBlocked) {
+            return res.status(403).json({
+              message: "Your account has been blocked by admin",
+            });
+          }
+          if (referedByUser.isVerified) {
+            let referedUsers = referedByUser.referedUsers;
+            referedUsers.push({
+              email: req.body.email,
+              _id: IsValid._id,
+            });
+            await Users.findOneAndUpdate(
+              { referalId: referedBy },
+              { referedUsers },
+              {
+                returnOriginal: false,
+              }
+            );
+          }
+        }
         await Users.findOneAndUpdate(
           { email: req.body.email },
           {
             isVerified: true,
             password: hash_password,
-            referalId: referalId ?? "",
+            referedBy: referedBy,
+            referalId: Generate_Referal_Id(),
           },
           {
             returnOriginal: false,
@@ -233,18 +267,60 @@ module.exports = class UserController {
         account,
         txid,
         amount,
+        isRewarded: false,
       };
       const user = await Users.findById(req.id);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      console.log(amount);
       await user.transactionIds.push(transaction);
       await user.save();
+      if (user.referedBy) {
+        const referedByuser = await Users.findOne({
+          referalId: user.referedBy,
+        });
+        console.log(referedByuser.referedUsers);
+        if (
+          amount / 100 > 1000 &&
+          amount / 100 < 5000 &&
+          amount / 100 < 10000) 
+          {
+          referedByuser.balance += 50 * 100;
+          await referedByuser.save();
+          return res
+            .status(200)
+            .json({ message: "Transaction ID appended successfully" });
+        } else if (amount / 100 > 5000 && amount / 100 < 10000) {
+          referedByuser.balance += 100 * 300;
+          await referedByuser.save();
+          return res
+            .status(200)
+            .json({ message: "Transaction ID appended successfully" });
+        } else if (amount / 100 > 10000) {
+          referedByuser.balance += 100 * 750;
+          await referedByuser.save();
+          return res
+            .status(200)
+            .json({ message: "Transaction ID appended successfully" });
+        }
+        return res
+          .status(200)
+          .json({ message: "Transaction ID appended successfully" });
+      }
       res.status(200).json({ message: "Transaction ID appended successfully" });
     } catch (error) {
+      console.log(error);
       res.status(400).json({ message: "Error in adding transaction", error });
     }
   };
   static GET_TOTAL_PURCHASE_AMOUNT = async (req, res) => {
     try {
+      console.log(req.id, "uer");
       const user = await Users.findById(req.id);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
       const pipeline = [
         {
           $match: {

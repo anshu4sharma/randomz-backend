@@ -30,6 +30,10 @@ const UserSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    referedUsers: {
+      type: [Object],
+      default: [],
+    },
     otp: {
       required: false,
       type: Number,
@@ -45,6 +49,15 @@ const UserSchema = new mongoose.Schema(
     referalId: {
       type: String,
       default: "",
+      unique: true,
+    },
+    referedBy: {
+      type: String,
+      default: "",
+    },
+    rewardedTransactions: {
+      type: [Object],
+      default: [],
     },
   },
   { timestamps: true }
