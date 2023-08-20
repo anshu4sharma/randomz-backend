@@ -43,11 +43,11 @@ module.exports = class UserController {
           return res.status(403).json({ message: "Account already exists" });
         } else {
           await userInfo.save();
-          res.json({ message: "Otp has been sent successfully !" });
           transporter.sendMail(mailData, (error, info) => {
             if (error) {
               res.status(500).send(error);
             }
+            res.json({ message: "Otp has been sent successfully !" });
           });
         }
       } catch (error) {
