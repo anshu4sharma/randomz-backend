@@ -492,6 +492,11 @@ module.exports = class UserController {
           .json({ message: "Transaction ID appended successfully" });
       }
       console.log(88888888888888);
+      user.transactionIds.push({
+        ...transaction,
+        isRewarded: false,
+      });
+      await user.save();
       return res
         .status(200)
         .json({ message: "Transaction ID appended successfully" });
@@ -530,6 +535,7 @@ module.exports = class UserController {
         },
       ];
       const results = await Users.aggregate(pipeline);
+      console.log(results);
       if (results.length === 0) {
         return res.json({ total: 0 });
       }
