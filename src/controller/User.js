@@ -37,22 +37,22 @@ module.exports = class UserController {
           text: null,
           html: `<span>Your Verification code is ${otp}</span>`,
         };
-        let userInfo = new Users(user);
         let IsEmail = await Users.findOne({ email: req.body.email });
         if (IsEmail) {
           return res.status(403).json({ message: "Account already exists" });
         } else {
+          let userInfo = new Users(user);
           await userInfo.save();
           transporter.sendMail(mailData, (error, info) => {
             if (error) {
-              res.status(500).send("Failed to send otp");
+              res.status(500).send("Server error");
             }
             res.json({ message: "Otp has been sent successfully !" });
           });
         }
       } catch (error) {
         console.log(error);
-        res.status(500).json({ message:"failed to send otp !" });
+        res.status(500).json({ message: "failed to send otp !" });
       }
     }
   };
@@ -336,8 +336,8 @@ module.exports = class UserController {
             { _id: req.id },
             {
               $set: {
-                'transactionIds.$[].isRewarded': true
-              }
+                "transactionIds.$[].isRewarded": true,
+              },
             }
           );
 
@@ -360,8 +360,8 @@ module.exports = class UserController {
             { _id: req.id },
             {
               $set: {
-                'transactionIds.$[].isRewarded': true
-              }
+                "transactionIds.$[].isRewarded": true,
+              },
             }
           );
           referedByuser.rewardedTransactions.push({
@@ -388,8 +388,8 @@ module.exports = class UserController {
             { _id: req.id },
             {
               $set: {
-                'transactionIds.$[].isRewarded': true
-              }
+                "transactionIds.$[].isRewarded": true,
+              },
             }
           );
           await user.save();
@@ -414,8 +414,8 @@ module.exports = class UserController {
             { _id: req.id },
             {
               $set: {
-                'transactionIds.$[].isRewarded': true
-              }
+                "transactionIds.$[].isRewarded": true,
+              },
             }
           );
           await user.save();
@@ -430,8 +430,8 @@ module.exports = class UserController {
             { _id: req.id },
             {
               $set: {
-                'transactionIds.$[].isRewarded': true
-              }
+                "transactionIds.$[].isRewarded": true,
+              },
             }
           );
 
@@ -459,10 +459,10 @@ module.exports = class UserController {
             { _id: req.id },
             {
               $set: {
-                'transactionIds.$[].isRewarded': true
-              }
+                "transactionIds.$[].isRewarded": true,
+              },
             }
-          );;
+          );
 
           referedByuser.balance += 100 * 750;
           referedByuser.rewardedTransactions.push({

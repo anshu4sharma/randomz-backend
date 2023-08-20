@@ -49,7 +49,6 @@ const UserSchema = new mongoose.Schema(
     referalId: {
       type: String,
       default: "",
-      unique: true,
     },
     referedBy: {
       type: String,
