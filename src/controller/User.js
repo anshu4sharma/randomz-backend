@@ -45,7 +45,7 @@ module.exports = class UserController {
           await userInfo.save();
           transporter.sendMail(mailData, (error, info) => {
             if (error) {
-              res.status(500).send(error);
+              res.status(500).send("Failed to send otp");
             }
             res.json({ message: "Otp has been sent successfully !" });
           });
