@@ -273,42 +273,228 @@ module.exports = class UserController {
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
-      console.log(amount);
-      await user.transactionIds.push(transaction);
-      await user.save();
       if (user.referedBy) {
         const referedByuser = await Users.findOne({
           referalId: user.referedBy,
         });
+        let totalReferredTransactionAmount;
+        try {
+          // Aggregate total transaction amount of referred users
+          totalReferredTransactionAmount = await Users.aggregate([
+            {
+              $match: {
+                _id: {
+                  $in: referedByuser.referedUsers.map((refUser) => refUser._id),
+                },
+              },
+            },
+            {
+              $unwind: "$transactionIds",
+            },
+            {
+              $match: {
+                "transactionIds.isRewarded": false,
+              },
+            },
+            {
+              $group: {
+                _id: null,
+                totalAmount: { $sum: "$transactionIds.amount" },
+              },
+            },
+          ]);
+        } catch (error) {
+          console.log(error);
+        }
+        console.log(
+          totalReferredTransactionAmount,
+          "totalReferredTransactionAmount"
+        );
+        if (totalReferredTransactionAmount.length < 1) {
+          console.log("-------------");
+          user.transactionIds.push({
+            ...transaction,
+            isRewarded: false,
+          });
+          await user.save();
+          return res
+            .status(200)
+            .json({ message: "Transaction ID appended successfully" });
+        }
         console.log(referedByuser.referedUsers);
         if (
           amount / 100 > 1000 &&
           amount / 100 < 5000 &&
-          amount / 100 < 10000) 
-          {
+          amount / 100 < 10000
+        ) {
           referedByuser.balance += 50 * 100;
+          referedByuser.rewardedTransactions.push({
+            ...transaction,
+            isRewarded: true,
+          });
+          await Users.findOneAndUpdate(
+            { _id: req.id },
+            {
+              $set: {
+                'transactionIds.$[].isRewarded': true
+              }
+            }
+          );
+
           await referedByuser.save();
+          user.transactionIds.push({
+            ...transaction,
+            isRewarded: true,
+          });
+          await user.save();
+          console.log(1111111111111111111111);
           return res
             .status(200)
             .json({ message: "Transaction ID appended successfully" });
         } else if (amount / 100 > 5000 && amount / 100 < 10000) {
-          referedByuser.balance += 100 * 300;
+          user.transactionIds.push({
+            ...transaction,
+            isRewarded: true,
+          });
+          await Users.findOneAndUpdate(
+            { _id: req.id },
+            {
+              $set: {
+                'transactionIds.$[].isRewarded': true
+              }
+            }
+          );
+          referedByuser.rewardedTransactions.push({
+            ...transaction,
+            isRewarded: true,
+          });
+          await user.save();
           await referedByuser.save();
+          console.log(2222222222222222);
           return res
             .status(200)
             .json({ message: "Transaction ID appended successfully" });
         } else if (amount / 100 > 10000) {
+          user.transactionIds.push({
+            ...transaction,
+            isRewarded: true,
+          });
           referedByuser.balance += 100 * 750;
+          referedByuser.rewardedTransactions.push({
+            ...transaction,
+            isRewarded: true,
+          });
+          await Users.findOneAndUpdate(
+            { _id: req.id },
+            {
+              $set: {
+                'transactionIds.$[].isRewarded': true
+              }
+            }
+          );
+          await user.save();
+          await referedByuser.save();
+          console.log(1333333111111111111);
+
+          return res
+            .status(200)
+            .json({ message: "Transaction ID appended successfully" });
+        } else if (totalReferredTransactionAmount[0].totalAmount / 100 > 1000) {
+          // Update previous transactions to have isRewarded: true
+          user.transactionIds.push({
+            ...transaction,
+            isRewarded: true,
+          });
+          referedByuser.balance += 50 * 100;
+          referedByuser.rewardedTransactions.push({
+            ...transaction,
+            isRewarded: true,
+          });
+          await Users.findOneAndUpdate(
+            { _id: req.id },
+            {
+              $set: {
+                'transactionIds.$[].isRewarded': true
+              }
+            }
+          );
+          await user.save();
+          await referedByuser.save();
+          console.log(4444444444444444);
+          return res
+            .status(200)
+            .json({ message: "Transaction ID appended successfully" });
+        } else if (totalReferredTransactionAmount[0].totalAmount / 100 > 5000) {
+          // Update previous transactions to have isRewarded: true
+          await Users.findOneAndUpdate(
+            { _id: req.id },
+            {
+              $set: {
+                'transactionIds.$[].isRewarded': true
+              }
+            }
+          );
+
+          referedByuser.balance += 100 * 300;
+          referedByuser.rewardedTransactions.push({
+            ...transaction,
+            isRewarded: true,
+          });
+          user.transactionIds.push({
+            ...transaction,
+            isRewarded: true,
+          });
+          await user.save();
+          await referedByuser.save();
+          console.log(55555555555555555);
+
+          return res
+            .status(200)
+            .json({ message: "Transaction ID appended successfully" });
+        } else if (
+          totalReferredTransactionAmount[0].totalAmount / 100 >
+          10000
+        ) {
+          await Users.findOneAndUpdate(
+            { _id: req.id },
+            {
+              $set: {
+                'transactionIds.$[].isRewarded': true
+              }
+            }
+          );;
+
+          referedByuser.balance += 100 * 750;
+          referedByuser.rewardedTransactions.push({
+            ...transaction,
+            isRewarded: true,
+          });
+          user.transactionIds.push({
+            ...transaction,
+            isRewarded: true,
+          });
+          await user.save();
+          console.log(666666666666666666);
+
           await referedByuser.save();
           return res
             .status(200)
             .json({ message: "Transaction ID appended successfully" });
         }
+        console.log(777777777777777);
+        user.transactionIds.push({
+          ...transaction,
+          isRewarded: false,
+        });
+        await user.save();
         return res
           .status(200)
           .json({ message: "Transaction ID appended successfully" });
       }
-      res.status(200).json({ message: "Transaction ID appended successfully" });
+      console.log(88888888888888);
+      return res
+        .status(200)
+        .json({ message: "Transaction ID appended successfully" });
     } catch (error) {
       console.log(error);
       res.status(400).json({ message: "Error in adding transaction", error });
