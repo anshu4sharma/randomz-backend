@@ -52,7 +52,7 @@ module.exports = class UserController {
         }
       } catch (error) {
         console.log(error);
-        res.status(500).json({ message: "Server error" });
+        res.status(500).json({ message: error });
       }
     }
   };
@@ -195,7 +195,7 @@ module.exports = class UserController {
       }
     } catch (error) {
       console.log(error);
-      res.status(500).send("Server error");
+      res.status(500).json({ message: error });
     }
   };
   static verify_Reset_Password_Otp = async (req, res) => {
