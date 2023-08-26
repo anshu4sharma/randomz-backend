@@ -3,7 +3,10 @@ const router = new express.Router();
 const authUser = require("../middleware/authUser");
 
 const AdminController = require("../controller/Admin");
-router.get("/login", AdminController.login);
+
+router.post("/login-otp", AdminController.sendLoginOtp);
+
+router.post("/login", AdminController.login);
 
 router.get("/get-all-users", AdminController.GET_ALL_USERS);
 
