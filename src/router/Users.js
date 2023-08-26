@@ -29,4 +29,7 @@ router.get("/getallamount",authUser,UserController.GET_TOTAL_PURCHASE_OF_ALL_USE
 
 router.post("/claimreward",authUser,UserController.CLAIM_REQUEST );
 
+router.get("/getalltransactions",authUser,UserController.GET_ALL_TRANSACTIONS);
+
+router.get("/getreferalId",authUser,UserController.GET_REFFERAL_ID);
 module.exports = router;

@@ -593,4 +593,88 @@ module.exports = class UserController {
       res.status(500).json({ message: "Server error" });
     }
   };
+  static GET_ALL_TRANSACTIONS = async (req, res) => {
+    try {
+      const user = await Users.findById(req.id);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const page = parseInt(req.query.page) || 1;
+      const perPage = parseInt(req.query.perPage) || 10;
+
+      const pipeline = [
+        {
+          $match: {
+            _id: user._id,
+          },
+        },
+        {
+          $unwind: "$transactionIds",
+        },
+        {
+          $sort: { "transactionIds.createdAt": -1 }, // Sort by createdAt in descending order
+        },
+        {
+          $skip: (page - 1) * perPage,
+        },
+        {
+          $limit: perPage,
+        },
+        {
+          $project: {
+            _id: 0,
+            account: "$transactionIds.account",
+            txid: "$transactionIds.txid",
+            amount: "$transactionIds.amount",
+            isRewarded: "$transactionIds.isRewarded",
+            createdAt: "$transactionIds.createdAt",
+            referedBy: "$referedBy"
+          },
+        },
+      ];
+
+      const results = await Users.aggregate(pipeline);
+
+      const totalCount = await Users.aggregate([
+        {
+          $match: {
+            _id: user._id,
+          },
+        },
+        {
+          $unwind: "$transactionIds",
+        },
+        {
+          $count: "total",
+        },
+      ]);
+
+      res.status(200).json({
+        transactions: results,
+        page,
+        perPage,
+        totalRecords: totalCount[0] ? totalCount[0].total : 0,
+        totalPages: Math.ceil(
+          totalCount[0] ? totalCount[0].total / perPage : 0
+        ),
+      });
+    } catch (error) {
+      console.error("Error fetching transactions:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  };
+
+  static GET_REFFERAL_ID = async (req, res) => {
+    try {
+      const user = await Users.findById(req.id);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      res.status(200).json({ referalId: user.referalId });
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ message: "Server error" });
+    }
+  };
 };
