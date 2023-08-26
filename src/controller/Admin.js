@@ -67,10 +67,10 @@ module.exports = class UserController {
           _id: IsValidme._id,
         };
         if (IsValidme.otp == otp) {
-          const token = jwt.sign({ data }, JWT_ACCESS_SECRET, {
+          const authToken = jwt.sign({ data }, JWT_ACCESS_SECRET, {
             expiresIn: "10day",
           });
-          return res.status(200).json({ token });
+          return res.status(200).json({ authToken });
         } else {
           return res.status(403).json({ message: "Invalid credential" });
         }
