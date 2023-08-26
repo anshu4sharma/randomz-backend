@@ -3,6 +3,7 @@ const express = require("express");
 const cors = require("cors");
 const dotenv = require("dotenv");
 const UserRoute = require("./src/router/Users");
+const AdminRoute = require("./src/router/Admin");
 const bodyParser = require("body-parser");
 require("./src/db/conn");
 dotenv.config();
@@ -12,10 +13,11 @@ app.use(bodyParser.json());
 // To remove data using these defaults:
 app.use(mongoSanitize());
 app.use(cors({ origin: "*", credentials: true }));
-const RewardUser  = require("./src/cronjob/Rewards")
- 
+const RewardUser = require("./src/cronjob/Rewards");
+
 // RewardUser.CHECK_EVERY_FIVE_MINUTES()
 app.use("/users", UserRoute);
+app.use("/admin", AdminRoute);
 app.listen(process.env.PORT, () => {
   console.log(`Server is running at port ${process.env.PORT}`);
 });

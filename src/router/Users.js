@@ -27,4 +27,6 @@ router.get("/gettotal",authUser, UserController.GET_TOTAL_PURCHASE_AMOUNT);
 
 router.get("/getallamount",authUser,UserController.GET_TOTAL_PURCHASE_OF_ALL_USERS );
 
+router.post("/claimreward",authUser,UserController.CLAIM_REQUEST );
+
 module.exports = router;

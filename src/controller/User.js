@@ -1,7 +1,9 @@
 const Users = require("../model/UserSchema");
+const ClaimRequests = require("../model/ClaimRequests");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const nodemailer = require("nodemailer");
+
 const { Generate_Referal_Id, isAlready_Verified } = require("../utils/Users");
 require("dotenv").config();
 const saltround = 10;
@@ -268,6 +270,7 @@ module.exports = class UserController {
         txid,
         amount,
         isRewarded: false,
+        createdAt: new Date(),
       };
       const user = await Users.findById(req.id);
       if (!user) {
@@ -306,12 +309,7 @@ module.exports = class UserController {
         } catch (error) {
           console.log(error);
         }
-        console.log(
-          totalReferredTransactionAmount,
-          "totalReferredTransactionAmount"
-        );
         if (totalReferredTransactionAmount.length < 1) {
-          console.log("-------------");
           user.transactionIds.push({
             ...transaction,
             isRewarded: false,
@@ -321,13 +319,12 @@ module.exports = class UserController {
             .status(200)
             .json({ message: "Transaction ID appended successfully" });
         }
-        console.log(referedByuser.referedUsers);
         if (
           amount / 100 > 1000 &&
           amount / 100 < 5000 &&
           amount / 100 < 10000
         ) {
-          referedByuser.balance += 50 * 100;
+          referedByuser.reward += 50 * 100;
           referedByuser.rewardedTransactions.push({
             ...transaction,
             isRewarded: true,
@@ -347,7 +344,6 @@ module.exports = class UserController {
             isRewarded: true,
           });
           await user.save();
-          console.log(1111111111111111111111);
           return res
             .status(200)
             .json({ message: "Transaction ID appended successfully" });
@@ -370,7 +366,6 @@ module.exports = class UserController {
           });
           await user.save();
           await referedByuser.save();
-          console.log(2222222222222222);
           return res
             .status(200)
             .json({ message: "Transaction ID appended successfully" });
@@ -379,7 +374,7 @@ module.exports = class UserController {
             ...transaction,
             isRewarded: true,
           });
-          referedByuser.balance += 100 * 750;
+          referedByuser.reward += 100 * 750;
           referedByuser.rewardedTransactions.push({
             ...transaction,
             isRewarded: true,
@@ -394,8 +389,6 @@ module.exports = class UserController {
           );
           await user.save();
           await referedByuser.save();
-          console.log(1333333111111111111);
-
           return res
             .status(200)
             .json({ message: "Transaction ID appended successfully" });
@@ -405,7 +398,7 @@ module.exports = class UserController {
             ...transaction,
             isRewarded: true,
           });
-          referedByuser.balance += 50 * 100;
+          referedByuser.reward += 50 * 100;
           referedByuser.rewardedTransactions.push({
             ...transaction,
             isRewarded: true,
@@ -420,7 +413,6 @@ module.exports = class UserController {
           );
           await user.save();
           await referedByuser.save();
-          console.log(4444444444444444);
           return res
             .status(200)
             .json({ message: "Transaction ID appended successfully" });
@@ -435,7 +427,7 @@ module.exports = class UserController {
             }
           );
 
-          referedByuser.balance += 100 * 300;
+          referedByuser.reward += 100 * 300;
           referedByuser.rewardedTransactions.push({
             ...transaction,
             isRewarded: true,
@@ -446,8 +438,6 @@ module.exports = class UserController {
           });
           await user.save();
           await referedByuser.save();
-          console.log(55555555555555555);
-
           return res
             .status(200)
             .json({ message: "Transaction ID appended successfully" });
@@ -464,7 +454,7 @@ module.exports = class UserController {
             }
           );
 
-          referedByuser.balance += 100 * 750;
+          referedByuser.reward += 100 * 750;
           referedByuser.rewardedTransactions.push({
             ...transaction,
             isRewarded: true,
@@ -474,14 +464,12 @@ module.exports = class UserController {
             isRewarded: true,
           });
           await user.save();
-          console.log(666666666666666666);
 
           await referedByuser.save();
           return res
             .status(200)
             .json({ message: "Transaction ID appended successfully" });
         }
-        console.log(777777777777777);
         user.transactionIds.push({
           ...transaction,
           isRewarded: false,
@@ -491,7 +479,6 @@ module.exports = class UserController {
           .status(200)
           .json({ message: "Transaction ID appended successfully" });
       }
-      console.log(88888888888888);
       user.transactionIds.push({
         ...transaction,
         isRewarded: false,
@@ -507,7 +494,6 @@ module.exports = class UserController {
   };
   static GET_TOTAL_PURCHASE_AMOUNT = async (req, res) => {
     try {
-      console.log(req.id, "uer");
       const user = await Users.findById(req.id);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
@@ -535,7 +521,6 @@ module.exports = class UserController {
         },
       ];
       const results = await Users.aggregate(pipeline);
-      console.log(results);
       if (results.length === 0) {
         return res.json({ total: 0 });
       }
@@ -579,6 +564,33 @@ module.exports = class UserController {
     } catch (error) {
       console.error("Error fetching total:", error);
       res.status(500).json({ error: "Internal server error" });
+    }
+  };
+  static CLAIM_REQUEST = async (req, res) => {
+    try {
+      const userId = req.id;
+      const { amount } = req.body;
+      const user = await Users.findById(userId);
+      if (!amount || !user) {
+        console.log("Please fill all the fields");
+        return res.status(400).json({ message: "Please fill all the fields" });
+      }
+      if (user.reward < amount) {
+        console.log(user.reward);
+        console.log("Insufficient reward");
+        return res.status(400).json({ message: "Insufficient reward" });
+      }
+      await ClaimRequests.create({
+        email: user.email,
+        amount,
+        status: "pending",
+      });
+      return res
+        .status(200)
+        .json({ message: "Claim request added successfully" });
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ message: "Server error" });
     }
   };
 };

@@ -38,7 +38,7 @@ const UserSchema = new mongoose.Schema(
       required: false,
       type: Number,
     },
-    balance: {
+    reward: {
       type: Number,
       default: 0,
     },
