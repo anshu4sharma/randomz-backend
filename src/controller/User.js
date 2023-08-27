@@ -574,6 +574,7 @@ module.exports = class UserController {
       const userId = req.id;
       const { amount } = req.body;
       const user = await Users.findById(userId);
+      console.log(amount);
       if (!amount || !user) {
         console.log("Please fill all the fields");
         return res.status(400).json({ message: "Please fill all the fields" });
@@ -674,11 +675,10 @@ module.exports = class UserController {
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
-      res.status(200).json({ referalId: user.referalId });
+      res.status(200).json({ referalId: user.referalId, reward: user.reward });
     } catch (error) {
       console.error(error);
       res.status(500).json({ message: "Server error" });
     }
   };
- 
 };
