@@ -136,6 +136,7 @@ module.exports = class UserController {
           $project: {
             _id: 0,
             referedBy: 1,
+            email: 1,
             transactionId: 1,
             createdAt: 1,
             amount: "$transactionIds.amount",
