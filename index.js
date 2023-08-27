@@ -13,7 +13,6 @@ app.use(bodyParser.json());
 // To remove data using these defaults:
 app.use(mongoSanitize());
 app.use(cors({ origin: "*", credentials: true }));
-const RewardUser = require("./src/cronjob/Rewards");
 
 // RewardUser.CHECK_EVERY_FIVE_MINUTES()
 app.use("/users", UserRoute);

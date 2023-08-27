@@ -171,24 +171,113 @@ module.exports = class UserController {
       const perPage = parseInt(req.query.perPage) || 10;
 
       const totalRecords = await Users.countDocuments();
-
       const pipeline = [
         {
           $project: {
             _id: 1,
             referedUsers: 1,
             email: 1,
-            selfpurchase: { $sum: "$transactionIds.amount" },
+            selfpurchase: {
+              $sum: "$transactionIds.amount",
+            },
             createdAt: 1,
+            referedBy: 1,
+            referalId: 1,
           },
         },
         {
           $group: {
             _id: "$_id",
-            referedUsers: { $first: "$referedUsers" },
-            email: { $first: "$email" },
-            selfpurchase: { $first: "$selfpurchase" },
-            createdAt: { $first: "$createdAt" },
+            referedUsers: {
+              $first: "$referedUsers",
+            },
+            email: {
+              $first: "$email",
+            },
+            selfpurchase: {
+              $first: "$selfpurchase",
+            },
+            createdAt: {
+              $first: "$createdAt",
+            },
+            referedBy: {
+              $first: "$referedBy",
+            },
+            referalId: {
+              $first: "$referalId",
+            },
+          },
+        },
+        {
+          $lookup: {
+            from: "users",
+            localField: "referedUsers._id",
+            foreignField: "_id",
+            as: "referedUsersInfo",
+          },
+        },
+        {
+          $addFields: {
+            totalReferedUsersPurchase: {
+              $map: {
+                input: "$referedUsersInfo",
+                as: "user",
+                in: {
+                  $reduce: {
+                    input: "$$user.transactionIds",
+                    initialValue: 0,
+                    in: {
+                      $add: ["$$value", "$$this.amount"],
+                    },
+                  },
+                },
+              },
+            },
+            totalTeamPurchase: {
+              $cond: [
+                {
+                  $eq: ["$referalId", "$_id.referedBy"],
+                },
+                {
+                  $sum: "$totalReferedUsersPurchase",
+                },
+                0,
+              ],
+            },
+          },
+        },
+        {
+          $project: {
+            _id: 1,
+            referedUsers: {
+              $size: {
+                $filter: {
+                  input: "$referedUsers",
+                  as: "referedUsers",
+                  cond: {
+                    $ne: ["$$referedUsers", null],
+                  },
+                },
+              },
+            },
+            email: 1,
+            selfpurchase: 1,
+            createdAt: 1,
+            referedBy: 1,
+            referalId: 1,
+            totalReferedUsersPurchase: 1,
+          },
+        },
+        {
+          $addFields: {
+            totalReferedUsersPurchaseSum: {
+              $sum: "$totalReferedUsersPurchase",
+            },
+          },
+        },
+        {
+          $project: {
+            totalReferedUsersPurchase: 0,
           },
         },
         {
