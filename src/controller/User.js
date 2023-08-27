@@ -681,4 +681,31 @@ module.exports = class UserController {
       res.status(500).json({ message: "Server error" });
     }
   };
+
+  static GET_CLAIM_REQUESTS = async (req, res) => {
+    try {
+      const page = parseInt(req.query.page) || 1;
+      const UserId = req.id;
+      const perPage = parseInt(req.query.perPage) || 10;
+      const user = await Users.findById(UserId);
+      const skip = (page - 1) * perPage;
+  
+      // Query the database with pagination
+      const results = await ClaimRequests.find({ email: user.email })
+        .skip(skip)
+        .limit(perPage);
+      // Get the total count of records for pagination calculation
+      const totalCount = await ClaimRequests.countDocuments({ email: user.email });
+      res.status(200).json({
+        claimRequests: results,
+        page,
+        perPage,
+        totalRecords: totalCount,
+        totalPages: Math.ceil(totalCount / perPage),
+      });
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ message: "Server error" });
+    }
+  };
 };

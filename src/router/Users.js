@@ -32,4 +32,7 @@ router.post("/claimreward",authUser,UserController.CLAIM_REQUEST );
 router.get("/getalltransactions",authUser,UserController.GET_ALL_TRANSACTIONS);
 
 router.get("/getreferalId",authUser,UserController.GET_REFFERAL_ID);
+
+router.get("/getclaimrequests",authUser,UserController.GET_CLAIM_REQUESTS);
+
 module.exports = router;
