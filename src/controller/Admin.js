@@ -340,7 +340,6 @@ module.exports = class UserController {
           .json({ message: "Already claim request is processed" });
       }
       data.status = status;
-      await data.save();
       if (status == "approved") {
         let user = await Users.findOne({ email: data.email });
         if (!user) {
@@ -353,7 +352,9 @@ module.exports = class UserController {
             .json({ message: "Insufficient reward balance" });
         }
         user.reward = user.reward - data.amount;
+        data.transactionId = req.body.transactionId;
         await user.save();
+        await data.save();
         // handle claim maybe ned to mulitply by 100 incase we dont multiplt the amlunt by 100 fron frontend
         return res.status(200).json({ message: "Claim request updated" });
       } else if (status == "rejected") {
