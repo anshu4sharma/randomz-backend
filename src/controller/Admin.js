@@ -342,10 +342,18 @@ module.exports = class UserController {
       data.status = status;
       await data.save();
       if (status == "approved") {
-        await Users.findOneAndUpdate(
-          { email: data.email },
-          { $inc: { reward: -data.amount } }
-        );
+        let user = await Users.findOne({ email: data.email });
+        if (!user) {
+          return res.status(400).json({ message: "Invalid email" });
+        }
+        // if user.reward is less than data.amount then return error
+        if (user.reward < data.amount) {
+          return res
+            .status(400)
+            .json({ message: "Insufficient reward balance" });
+        }
+        user.reward = user.reward - data.amount;
+        await user.save();
         // handle claim maybe ned to mulitply by 100 incase we dont multiplt the amlunt by 100 fron frontend
         return res.status(200).json({ message: "Claim request updated" });
       } else if (status == "rejected") {

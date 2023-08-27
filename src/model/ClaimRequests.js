@@ -13,6 +13,10 @@ const ClaimRequestsSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
+    transactionId: {
+      type: String,
+      default: "",
+    },
   },
   { timestamps: true }
 );
