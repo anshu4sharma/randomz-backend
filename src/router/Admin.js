@@ -19,4 +19,6 @@ router.post("/update-claimrequest", isAdmin, AdminController.HANDLE_CLAIM_REQUES
 
 router.get("/get-user-transactions/:id",reqId, isAdmin, UserController.GET_ALL_TRANSACTIONS);
 
+router.get("/find-team/:id", isAdmin, AdminController.FIND_TEAM);
+
 module.exports = router;

@@ -680,4 +680,5 @@ module.exports = class UserController {
       res.status(500).json({ message: "Server error" });
     }
   };
+ 
 };

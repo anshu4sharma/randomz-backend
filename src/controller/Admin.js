@@ -367,4 +367,49 @@ module.exports = class UserController {
       res.status(500).json({ message: "Server error" });
     }
   };
+  static FIND_TEAM = async (req, res) => {
+    try {
+      if (!req.params.id) {
+        return res.status(400).json({ message: "Please fill all fields!" });
+      }
+
+      const page = parseInt(req.query.page) || 1; // Default to page 1 if not provided
+      const perPage = parseInt(req.query.perPage) || 10; // Default to 10 items per page
+
+      const skip = (page - 1) * perPage;
+
+      const data = await Users.find(
+        { referedBy: req.params.id },
+        {
+          _id: 1,
+          email: 1,
+          createdAt: 1,
+          referedBy: 1,
+          referalId: 1,
+          reward: 1,
+        }
+      )
+        .skip(skip)
+        .limit(perPage);
+
+      const totalCount = await Users.countDocuments({
+        referedBy: req.params.id,
+      });
+
+      if (data.length > 0) {
+        return res.status(200).json({
+          data,
+          page,
+          perPage,
+          totalRecords: totalCount,
+          totalPages: Math.ceil(totalCount / perPage),
+        });
+      } else {
+        return res.status(400).json({ message: "No team found" });
+      }
+    } catch (error) {
+      console.log(error);
+      res.status(500).json({ message: "Server error" });
+    }
+  };
 };
