@@ -324,7 +324,8 @@ module.exports = class UserController {
           amount / 100 < 5000 &&
           amount / 100 < 10000
         ) {
-          referedByuser.reward += 50 * 100;
+          // find percenta
+          referedByuser.reward += ((5 / 100) * amount) / 100;
           referedByuser.rewardedTransactions.push({
             ...transaction,
             isRewarded: true,
@@ -360,6 +361,7 @@ module.exports = class UserController {
               },
             }
           );
+          referedByuser.reward += ((6 / 100) * amount) / 100;
           referedByuser.rewardedTransactions.push({
             ...transaction,
             isRewarded: true,
@@ -374,7 +376,8 @@ module.exports = class UserController {
             ...transaction,
             isRewarded: true,
           });
-          referedByuser.reward += 100 * 750;
+          referedByuser.reward += ((7.5 / 100) * amount) / 100;
+
           referedByuser.rewardedTransactions.push({
             ...transaction,
             isRewarded: true,
@@ -398,7 +401,7 @@ module.exports = class UserController {
             ...transaction,
             isRewarded: true,
           });
-          referedByuser.reward += 50 * 100;
+          referedByuser.reward += ((5 / 100) * amount) / 100;
           referedByuser.rewardedTransactions.push({
             ...transaction,
             isRewarded: true,
@@ -427,7 +430,7 @@ module.exports = class UserController {
             }
           );
 
-          referedByuser.reward += 100 * 300;
+          referedByuser.reward += ((6.5 / 100) * amount) / 100;
           referedByuser.rewardedTransactions.push({
             ...transaction,
             isRewarded: true,
@@ -454,7 +457,7 @@ module.exports = class UserController {
             }
           );
 
-          referedByuser.reward += 100 * 750;
+          referedByuser.reward += ((7.5 / 100) * amount) / 100;
           referedByuser.rewardedTransactions.push({
             ...transaction,
             isRewarded: true,
@@ -629,7 +632,7 @@ module.exports = class UserController {
             amount: "$transactionIds.amount",
             isRewarded: "$transactionIds.isRewarded",
             createdAt: "$transactionIds.createdAt",
-            referedBy: "$referedBy"
+            referedBy: "$referedBy",
           },
         },
       ];
