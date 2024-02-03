@@ -1,4 +1,3 @@
-import dotenv from "dotenv";
 import jwt from "jsonwebtoken";
 import Users from "../model/UserSchema";
 import { JWT_ACCESS_SECRET } from "../constant/env";

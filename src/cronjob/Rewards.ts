@@ -1,5 +1,3 @@
-import cron from "node-cron";
-import RewardAmount from "../constant/index";
 import Users from "../model/UserSchema";
 
 export default class RewardUser {

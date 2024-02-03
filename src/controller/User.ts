@@ -36,7 +36,7 @@ export default class UserController {
         } else {
           let userInfo = new Users(user);
           await userInfo.save();
-          transporter.sendMail(mailData, (error, info) => {
+          transporter.sendMail(mailData as any, (error, info) => {
             if (error) {
               res.status(500).send("Server error");
             }

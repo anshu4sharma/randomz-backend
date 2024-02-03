@@ -1,6 +1,3 @@
-import dotenv from "dotenv";
-
-dotenv.config();
 
 const reqId = async (req, res, next) => {
   const token = req.params.id;

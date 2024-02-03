@@ -1,8 +1,8 @@
 import jwt from "jsonwebtoken";
 import { JWT_ACCESS_SECRET } from "../constant/env";
+import { Request,Response , NextFunction } from "express";
 
-
-const authUser = (req, res, next) => {
+const authUser = (req:Request, res:Response, next:NextFunction) => {
   const token = req.headers["auth-token"];
   try {
     if (!token) {
