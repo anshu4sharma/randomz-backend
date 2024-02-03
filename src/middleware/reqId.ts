@@ -1,4 +1,7 @@
-require("dotenv").config();
+import dotenv from "dotenv";
+
+dotenv.config();
+
 const reqId = async (req, res, next) => {
   const token = req.params.id;
   try {
@@ -12,4 +15,4 @@ const reqId = async (req, res, next) => {
   }
 };
 
-module.exports = reqId;
+export default reqId;

@@ -1,20 +1,10 @@
-const Users = require("../model/UserSchema");
-require("dotenv").config();
-const nodemailer = require("nodemailer");
-const ClaimRequests = require("../model/ClaimRequests");
-const JWT_ACCESS_SECRET = process.env.JWT_ACCESS_SECRET;
-const jwt = require("jsonwebtoken");
-const transporter = nodemailer.createTransport({
-  port: 465,
-  host: "smtp.gmail.com",
-  auth: {
-    user: process.env.EMAIL,
-    pass: process.env.PASSWORD,
-  },
-  secure: true,
-});
+import Users from "../model/UserSchema";
+import ClaimRequests from "../model/ClaimRequests";
+import jwt from "jsonwebtoken";
+import { EMAIL, JWT_ACCESS_SECRET } from "../constant/env";
+import { transporter } from "../config/mail-server";
 
-module.exports = class UserController {
+export default class UserController {
   static sendLoginOtp = async (req, res) => {
     try {
       const { email } = req.body;
@@ -23,7 +13,7 @@ module.exports = class UserController {
       }
       const otp = Math.floor(Math.random() * 9000 + 1000);
       const mailData = {
-        from: process.env.EMAIL,
+        from: EMAIL,
         to: req.body.email,
         subject: "Verifcation code",
         text: null,

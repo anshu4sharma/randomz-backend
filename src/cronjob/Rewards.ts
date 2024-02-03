@@ -1,11 +1,12 @@
-const cron = require("node-cron");
-const RewardAmount = require("../constant/index");
-const Users = require("../model/UserSchema");
-module.exports = class RewardUser {
+import cron from "node-cron";
+import RewardAmount from "../constant/index";
+import Users from "../model/UserSchema";
+
+export default class RewardUser {
   static CHECK_EVERY_FIVE_MINUTES = async () => {
     // cron.schedule("*/5 * * * *", () => {
     const data = await Users.find({
-      referedBy: { $ne: '' },
+      referedBy: { $ne: "" },
     });
     // cron.schedule("*/4 * * * * *", () => {
     //   console.log(RewardAmount.REWARD_FOR_A_PURCHASE_AMOUNT);

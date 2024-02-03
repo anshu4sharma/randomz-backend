@@ -1,9 +1,10 @@
-const express = require("express");
-const router = new express.Router();
-const isAdmin = require("../middleware/isAdmin");
-const reqId = require("../middleware/reqId");
-const AdminController = require("../controller/Admin");
-const UserController = require("../controller/User");
+import express from "express";
+import isAdmin from "../middleware/isAdmin";
+import reqId from "../middleware/reqId";
+import AdminController from "../controller/Admin";
+import UserController from "../controller/User";
+
+const router = express.Router();
 
 router.post("/login-otp", AdminController.sendLoginOtp);
 
@@ -17,8 +18,8 @@ router.get("/get-all-claimrequest", isAdmin, AdminController.GET_ALL_CLAIM_REQUE
 
 router.post("/update-claimrequest", isAdmin, AdminController.HANDLE_CLAIM_REQUEST);
 
-router.get("/get-user-transactions/:id",reqId, isAdmin, UserController.GET_ALL_TRANSACTIONS);
+router.get("/get-user-transactions/:id", reqId, isAdmin, UserController.GET_ALL_TRANSACTIONS);
 
 router.get("/find-team/:id", isAdmin, AdminController.FIND_TEAM);
 
-module.exports = router;
+export default router;

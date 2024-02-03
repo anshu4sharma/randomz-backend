@@ -1,8 +1,10 @@
-const mongoose = require("mongoose");
-require("dotenv").config();
+import mongoose from "mongoose";
+import { MONGO_URL } from "../constant/env";
+
 mongoose
-  .connect(process.env.MONGO_URL, {
-    useUnifiedTopology: true,
+.connect(MONGO_URL as string, {
+  // @ts-ignore
+  useUnifiedTopology: true,
     useNewUrlParser: true,
   })
   .then(() => {

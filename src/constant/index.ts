@@ -4,4 +4,4 @@ const RewardAmount = {
   REWARD_FOR_C_PURCHASE_AMOUNT: 1000,
 };
 
-module.exports = RewardAmount;
+export default RewardAmount;

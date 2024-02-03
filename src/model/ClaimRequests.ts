@@ -1,4 +1,5 @@
-const mongoose = require("mongoose");
+import mongoose from "mongoose";
+
 const ClaimRequestsSchema = new mongoose.Schema(
   {
     email: {
@@ -22,6 +23,6 @@ const ClaimRequestsSchema = new mongoose.Schema(
 );
 
 //  here we are creating model / collection
-const ClaimRequests = new mongoose.model("ClaimRequests", ClaimRequestsSchema);
+const ClaimRequests = mongoose.model("ClaimRequests", ClaimRequestsSchema);
 
-module.exports = ClaimRequests;
+export default ClaimRequests;

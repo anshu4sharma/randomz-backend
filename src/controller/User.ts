@@ -1,25 +1,16 @@
-const Users = require("../model/UserSchema");
-const ClaimRequests = require("../model/ClaimRequests");
-const bcrypt = require("bcrypt");
-const jwt = require("jsonwebtoken");
-const nodemailer = require("nodemailer");
+import Users from "../model/UserSchema";
+import ClaimRequests from "../model/ClaimRequests";
+import bcrypt from "bcrypt";
+import jwt from "jsonwebtoken";
+import { Generate_Referal_Id } from "../utils/Users";
+import { Request,Response } from "express";
+import { transporter } from "../config/mail-server";
+import { EMAIL, JWT_ACCESS_SECRET } from "../constant/env";
 
-const { Generate_Referal_Id, isAlready_Verified } = require("../utils/Users");
-require("dotenv").config();
 const saltround = 10;
-const JWT_ACCESS_SECRET = process.env.JWT_ACCESS_SECRET;
-const transporter = nodemailer.createTransport({
-  port: 465,
-  host: "smtp.gmail.com",
-  auth: {
-    user: process.env.EMAIL,
-    pass: process.env.PASSWORD,
-  },
-  secure: true,
-});
 
-module.exports = class UserController {
-  static sendEmail = async (req, res) => {
+export default class UserController {
+  static sendEmail = async (req:Request, res:Response) => {
     const { email } = req.body;
     if (!email) {
       res.status(403).json({
@@ -33,7 +24,7 @@ module.exports = class UserController {
           otp,
         };
         const mailData = {
-          from: process.env.EMAIL,
+          from: EMAIL,
           to: req.body.email,
           subject: "Verifcation code",
           text: null,
@@ -173,7 +164,7 @@ module.exports = class UserController {
     }
     const otp = Math.floor(Math.random() * 9000 + 1000);
     const mailData = {
-      from: process.env.EMAIL,
+      from: EMAIL,
       to: req.body.email,
       subject: "Verifcation code for password reset",
       text: null,

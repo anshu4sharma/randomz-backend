@@ -1,5 +1,6 @@
-const mongoose = require("mongoose");
-const validator = require("validator");
+import mongoose from "mongoose";
+import validator from "validator";
+
 const UserSchema = new mongoose.Schema(
   {
     role: {
@@ -11,7 +12,7 @@ const UserSchema = new mongoose.Schema(
       required: false,
       unique: true,
       type: String,
-      validate(data) {
+      validate(data: string) {
         if (!validator.isEmail(data)) {
           throw new Error("Email is not valid");
         }
@@ -65,4 +66,4 @@ const UserSchema = new mongoose.Schema(
 //  here we are creating model / collection
 const Users = new mongoose.model("Users", UserSchema);
 
-module.exports = Users;
+export default Users
