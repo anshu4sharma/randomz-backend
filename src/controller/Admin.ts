@@ -6,47 +6,48 @@ import { transporter } from "../config/mail-server";
 import { Request, Response } from "express";
 import Transaction from "../model/Transaction";
 import mongoose from "mongoose";
+import bcrypt from 'bcrypt'
 export default class UserController {
-  static sendLoginOtp = async (req: Request, res: Response) => {
-    try {
-      const { email } = req.body;
-      if (!email) {
-        return res.status(400).json({ message: "Please fill all fields!" });
-      }
-      const otp = Math.floor(Math.random() * 9000 + 1000);
-      const mailData = {
-        from: EMAIL,
-        to: req.body.email,
-        subject: "Verifcation code",
-        text: null,
-        html: `<span>Your Verification code is ${otp}</span>`,
-      };
-      let userInfo = await Users.findOneAndUpdate(
-        { email, role: "admin" },
-        {
-          otp,
-        }
-      );
-      if (!userInfo) {
-        return res.status(400).json({ message: "Invalid email" });
-      }
-      // return transporter.sendMail(mailData, (error, info) => {
-      // console.log(info, error);
-      // if (error) {
-      //   res.status(500).send("Server error");
-      // }
-      return res.json({ message: "Otp has been sent successfully !" });
-      // });
-    } catch (error) {
-      console.error(error);
-      res.status(500).json({ message: "Server error" });
-    }
-  };
+  // static sendLoginOtp = async (req: Request, res: Response) => {
+  //   try {
+  //     const { email } = req.body;
+  //     if (!email) {
+  //       return res.status(400).json({ message: "Please fill all fields!" });
+  //     }
+  //     const otp = Math.floor(Math.random() * 9000 + 1000);
+  //     const mailData = {
+  //       from: EMAIL,
+  //       to: req.body.email,
+  //       subject: "Verifcation code",
+  //       text: null,
+  //       html: `<span>Your Verification code is ${otp}</span>`,
+  //     };
+  //     let userInfo = await Users.findOneAndUpdate(
+  //       { email, role: "admin" },
+  //       {
+  //         otp,
+  //       }
+  //     );
+  //     if (!userInfo) {
+  //       return res.status(400).json({ message: "Invalid email" });
+  //     }
+  //     // return transporter.sendMail(mailData, (error, info) => {
+  //     // console.log(info, error);
+  //     // if (error) {
+  //     //   res.status(500).send("Server error");
+  //     // }
+  //     return res.json({ message: "Otp has been sent successfully !" });
+  //     // });
+  //   } catch (error) {
+  //     console.error(error);
+  //     res.status(500).json({ message: "Server error" });
+  //   }
+  // };
 
   static login = async (req: Request, res: Response) => {
     try {
-      const { email, otp } = req.body;
-      if (!email || !otp) {
+      const { email, password } = req.body;
+      if (!email || !password) {
         return res.status(403).send("please fill the data");
       }
       let IsValidme = await Users.findOne({ email: email, role: "admin" });
@@ -58,7 +59,11 @@ export default class UserController {
           role: IsValidme.role,
           _id: IsValidme._id,
         };
-        if (IsValidme.otp == otp) {
+        let isMatch = await bcrypt.compare(
+          password,
+          IsValidme.password as string
+        );
+        if (isMatch) {
           const authToken = jwt.sign({ data }, JWT_ACCESS_SECRET, {
             expiresIn: "10day",
           });
