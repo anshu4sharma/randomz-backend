@@ -18,6 +18,7 @@ router.get("/get-all-claimrequest", isAdmin, AdminController.GET_ALL_CLAIM_REQUE
 
 router.post("/update-claimrequest", isAdmin, AdminController.HANDLE_CLAIM_REQUEST);
 
+// get all the transaction of a specific User throuh admin panel
 router.get("/get-user-transactions/:id", reqId, isAdmin, UserController.GET_ALL_TRANSACTIONS);
 
 router.get("/find-team/:id", isAdmin, AdminController.FIND_TEAM);

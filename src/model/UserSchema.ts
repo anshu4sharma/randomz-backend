@@ -64,6 +64,6 @@ const UserSchema = new mongoose.Schema(
 );
 
 //  here we are creating model / collection
-const Users = new mongoose.model("Users", UserSchema);
+const Users =  mongoose.model("User", UserSchema);
 
 export default Users

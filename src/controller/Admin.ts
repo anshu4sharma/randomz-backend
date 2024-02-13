@@ -3,9 +3,11 @@ import ClaimRequests from "../model/ClaimRequests";
 import jwt from "jsonwebtoken";
 import { EMAIL, JWT_ACCESS_SECRET } from "../constant/env";
 import { transporter } from "../config/mail-server";
-
+import { Request, Response } from "express";
+import Transaction from "../model/Transaction";
+import mongoose from "mongoose";
 export default class UserController {
-  static sendLoginOtp = async (req, res) => {
+  static sendLoginOtp = async (req: Request, res: Response) => {
     try {
       const { email } = req.body;
       if (!email) {
@@ -28,20 +30,20 @@ export default class UserController {
       if (!userInfo) {
         return res.status(400).json({ message: "Invalid email" });
       }
-      return transporter.sendMail(mailData, (error, info) => {
-        console.log(info, error);
-        if (error) {
-          res.status(500).send("Server error");
-        }
-        return res.json({ message: "Otp has been sent successfully !" });
-      });
+      // return transporter.sendMail(mailData, (error, info) => {
+      // console.log(info, error);
+      // if (error) {
+      //   res.status(500).send("Server error");
+      // }
+      return res.json({ message: "Otp has been sent successfully !" });
+      // });
     } catch (error) {
       console.error(error);
       res.status(500).json({ message: "Server error" });
     }
   };
 
-  static login = async (req, res) => {
+  static login = async (req: Request, res: Response) => {
     try {
       const { email, otp } = req.body;
       if (!email || !otp) {
@@ -67,83 +69,27 @@ export default class UserController {
       }
     } catch (error) {
       console.log(error);
-      res.status(500).json({ message: error.message });
+      res.status(500).json({ message: (error as Error).message });
     }
   };
-  static GET_ALL_TRANSACTIONS = async (req, res) => {
+  static GET_ALL_TRANSACTIONS = async (req: Request, res: Response) => {
     try {
-      const page = parseInt(req.query.page) || 1;
-      const perPage = parseInt(req.query.perPage) || 10;
+      const page = parseInt(req.query.page as string) || 1;
+      const perPage = parseInt(req.query.perPage as string) || 10;
 
-      const totalCount = await Users.aggregate([
-        {
-          $match: {
-            transactionIds: { $exists: true, $ne: [] },
-          },
-        },
-        {
-          $lookup: {
-            from: "users",
-            localField: "referedBy",
-            foreignField: "_id",
-            as: "referedByUser",
-          },
-        },
-        {
-          $unwind: "$transactionIds",
-        },
-        {
-          $count: "total",
-        },
-      ]);
+      const totalCount = await Transaction.countDocuments();
 
-      const totalRecords = totalCount[0] ? totalCount[0].total : 0;
+      const totalRecords = totalCount ? totalCount : 0;
       const totalPages = Math.ceil(totalRecords / perPage); // Calculate total pages
 
-      const pipeline = [
-        {
-          $match: {
-            transactionIds: { $exists: true, $ne: [] },
-          },
-        },
-        {
-          $lookup: {
-            from: "users",
-            localField: "referedBy",
-            foreignField: "_id",
-            as: "referedByUser",
-          },
-        },
-        {
-          $unwind: "$transactionIds",
-        },
-        {
-          $addFields: {
-            transactionId: "$transactionIds.txid",
-          },
-        },
-        {
-          $project: {
-            _id: 0,
-            referedBy: 1,
-            email: 1,
-            transactionId: 1,
-            createdAt: 1,
-            amount: "$transactionIds.amount",
-          },
-        },
-        {
-          $sort: { createdAt: -1 }, // Sort by createdAt in descending order
-        },
-        {
-          $skip: (page - 1) * perPage,
-        },
-        {
-          $limit: perPage,
-        },
-      ];
+      const result = await Transaction.find({})
+        .populate({ path: "user", select: "-password -otp" })
+        .skip((page - 1) * perPage)
+        .limit(perPage)
+        .sort({
+          createdAt: -1,
+        });
 
-      const result = await Users.aggregate(pipeline);
       res.status(200).json({
         result,
         page,
@@ -156,119 +102,137 @@ export default class UserController {
       res.status(500).json({ message: "Server error" });
     }
   };
-  static GET_ALL_USERS = async (req, res) => {
+  static GET_ALL_USERS = async (req: Request, res: Response) => {
     try {
-      const page = parseInt(req.query.page) || 1;
-      const perPage = parseInt(req.query.perPage) || 10;
+      const page = parseInt(req.query.page as string) || 1;
+      const perPage = parseInt(req.query.perPage as string) || 10;
 
       const totalRecords = await Users.countDocuments();
       const pipeline = [
         {
-          $project: {
-            _id: 1,
-            referedUsers: 1,
-            email: 1,
-            selfpurchase: {
-              $sum: "$transactionIds.amount",
-            },
-            createdAt: 1,
-            referedBy: 1,
-            referalId: 1,
+          $lookup: {
+            from: "transactions",
+            localField: "_id",
+            foreignField: "user",
+            as: "result",
           },
         },
         {
-          $group: {
-            _id: "$_id",
-            referedUsers: {
-              $first: "$referedUsers",
+          $project: {
+            _id: 1,
+            email: 1,
+            result: 1,
+            createdAt: 1,
+            referalId: 1,
+            referedBy: 1,
+            totalPurchase: {
+              $map: {
+                input: "$result",
+                as: "transaction",
+                in: "$$transaction.amount",
+              },
             },
-            email: {
-              $first: "$email",
-            },
+          },
+        },
+        {
+          $project: {
+            _id: 1,
+            email: 1,
+            referalId: 1,
+            referedBy: 1,
+            createdAt: 1,
             selfpurchase: {
-              $first: "$selfpurchase",
-            },
-            createdAt: {
-              $first: "$createdAt",
-            },
-            referedBy: {
-              $first: "$referedBy",
-            },
-            referalId: {
-              $first: "$referalId",
+              $sum: "$totalPurchase",
             },
           },
         },
         {
           $lookup: {
             from: "users",
-            localField: "referedUsers._id",
-            foreignField: "_id",
-            as: "referedUsersInfo",
-          },
-        },
-        {
-          $addFields: {
-            totalReferedUsersPurchase: {
-              $map: {
-                input: "$referedUsersInfo",
-                as: "user",
-                in: {
-                  $reduce: {
-                    input: "$$user.transactionIds",
-                    initialValue: 0,
-                    in: {
-                      $add: ["$$value", "$$this.amount"],
-                    },
-                  },
-                },
-              },
-            },
-            totalTeamPurchase: {
-              $cond: [
-                {
-                  $eq: ["$referalId", "$_id.referedBy"],
-                },
-                {
-                  $sum: "$totalReferedUsersPurchase",
-                },
-                0,
-              ],
-            },
+            localField: "referalId",
+            foreignField: "referedBy",
+            as: "result",
           },
         },
         {
           $project: {
             _id: 1,
-            referedUsers: {
-              $size: {
-                $filter: {
-                  input: "$referedUsers",
-                  as: "referedUsers",
-                  cond: {
-                    $ne: ["$$referedUsers", null],
-                  },
-                },
+            email: 1,
+            referalId: 1,
+            referedBy: 1,
+            createdAt: 1,
+            selfpurchase: 1,
+            totalrefferdUser: {
+              $map: {
+                input: "$result",
+                as: "user",
+                in: "$$user._id",
               },
             },
-            email: 1,
-            selfpurchase: 1,
-            createdAt: 1,
-            referedBy: 1,
-            referalId: 1,
-            totalReferedUsersPurchase: 1,
+          },
+        },
+        {
+          $addFields: {
+            referedUsers: {
+              $size: "$totalrefferdUser",
+            },
+          },
+        },
+        {
+          $unwind: {
+            path: "$totalrefferdUser",
+          },
+        },
+        {
+          $lookup: {
+            from: "transactions",
+            localField: "totalrefferdUser",
+            foreignField: "user",
+            as: "result",
+          },
+        },
+        {
+          $addFields: {
+            totalSumofAmount: {
+              $map: {
+                input: "$result",
+                as: "user",
+                in: "$$user.amount",
+              },
+            },
           },
         },
         {
           $addFields: {
             totalReferedUsersPurchaseSum: {
-              $sum: "$totalReferedUsersPurchase",
+              $sum: "$totalSumofAmount",
             },
           },
         },
         {
-          $project: {
-            totalReferedUsersPurchase: 0,
+          $group: {
+            _id: "$_id",
+            email: {
+              $first: "$email",
+            },
+            referalId: {
+              $first: "$referalId",
+            },
+            referedBy: {
+              $first: "$referedBy",
+            },
+            createdAt: {
+              $first: "$createdAt",
+            },
+            selfpurchase: {
+              $first: "$selfpurchase",
+            },
+            referedUsers: {
+              $first: "$referedUsers",
+            },
+            totalReferedUsersPurchaseSum: {
+              $first: "$totalReferedUsersPurchaseSum",
+            },
           },
         },
         {
@@ -281,7 +245,7 @@ export default class UserController {
           $limit: perPage,
         },
       ];
-      const result = await Users.aggregate(pipeline);
+      const result = await Users.aggregate(pipeline as any);
       res.status(200).json({
         result,
         page,
@@ -294,10 +258,10 @@ export default class UserController {
       res.status(500).json({ message: "Server error" });
     }
   };
-  static GET_ALL_CLAIM_REQUESTS = async (req, res) => {
+  static GET_ALL_CLAIM_REQUESTS = async (req: Request, res: Response) => {
     try {
-      const page = parseInt(req.query.page) || 1;
-      const perPage = parseInt(req.query.perPage) || 10;
+      const page = parseInt(req.query.page as string) || 1;
+      const perPage = parseInt(req.query.perPage as string) || 10;
       const totalCount = await ClaimRequests.countDocuments();
       const result = await ClaimRequests.find({})
         .skip((page - 1) * perPage)
@@ -315,7 +279,7 @@ export default class UserController {
       res.status(500).json({ message: "Server error" });
     }
   };
-  static HANDLE_CLAIM_REQUEST = async (req, res) => {
+  static HANDLE_CLAIM_REQUEST = async (req: Request, res: Response) => {
     try {
       const { id, status } = req.body;
       if (!id || !status) {
@@ -358,17 +322,14 @@ export default class UserController {
       res.status(500).json({ message: "Server error" });
     }
   };
-  static FIND_TEAM = async (req, res) => {
+  static FIND_TEAM = async (req: Request, res: Response) => {
     try {
       if (!req.params.id) {
         return res.status(400).json({ message: "Please fill all fields!" });
       }
-
-      const page = parseInt(req.query.page) || 1; // Default to page 1 if not provided
-      const perPage = parseInt(req.query.perPage) || 10; // Default to 10 items per page
-
+      const page = parseInt(req.query.page as string) || 1; // Default to page 1 if not provided
+      const perPage = parseInt(req.query.perPage as string) || 10; // Default to 10 items per page
       const skip = (page - 1) * perPage;
-
       const data = await Users.find(
         { referedBy: req.params.id },
         {
@@ -403,4 +364,4 @@ export default class UserController {
       res.status(500).json({ message: "Server error" });
     }
   };
-};
+}

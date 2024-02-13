@@ -1,16 +1,20 @@
 import Users from "../model/UserSchema";
+import Transaction from "../model/Transaction";
 import ClaimRequests from "../model/ClaimRequests";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { Generate_Referal_Id } from "../utils/Users";
-import { Request,Response } from "express";
+import { Request, Response } from "express";
 import { transporter } from "../config/mail-server";
 import { EMAIL, JWT_ACCESS_SECRET } from "../constant/env";
 
+export interface CustomRequest extends Request {
+  id?: string; // Assuming id is a string
+}
 const saltround = 10;
 
 export default class UserController {
-  static sendEmail = async (req:Request, res:Response) => {
+  static sendEmail = async (req: Request, res: Response) => {
     const { email } = req.body;
     if (!email) {
       res.status(403).json({
@@ -36,12 +40,12 @@ export default class UserController {
         } else {
           let userInfo = new Users(user);
           await userInfo.save();
-          transporter.sendMail(mailData as any, (error, info) => {
-            if (error) {
-              res.status(500).send("Server error");
-            }
-            res.json({ message: "Otp has been sent successfully !" });
-          });
+          // transporter.sendMail(mailData as any, (error, info) => {
+          //   if (error) {
+          //     res.status(500).send("Server error");
+          //   }
+          res.json({ message: "Otp has been sent successfully !" });
+          // });
         }
       } catch (error) {
         console.log(error);
@@ -50,7 +54,7 @@ export default class UserController {
     }
   };
 
-  static signup = async (req, res) => {
+  static signup = async (req: Request, res: Response) => {
     const { email, password, referedBy, otp } = req.body;
     if (!email || !password || !otp) {
       return res.status(403).json({
@@ -69,6 +73,14 @@ export default class UserController {
         }
         let salt = await bcrypt.genSalt(saltround);
         let hash_password = await bcrypt.hash(password, salt);
+
+        let updatedDetails = {
+          isVerified: true,
+          password: hash_password,
+          referalId: Generate_Referal_Id(),
+          referedBy: "",
+        };
+
         if (referedBy) {
           let referedByUser = await Users.findOne({ referalId: referedBy });
           if (!referedByUser) {
@@ -76,34 +88,11 @@ export default class UserController {
               message: "Invalid referal Id",
             });
           }
-          if (referedByUser.isBlocked) {
-            return res.status(403).json({
-              message: "Your account has been blocked by admin",
-            });
-          }
-          if (referedByUser.isVerified) {
-            let referedUsers = referedByUser.referedUsers;
-            referedUsers.push({
-              email: req.body.email,
-              _id: IsValid._id,
-            });
-            await Users.findOneAndUpdate(
-              { referalId: referedBy },
-              { referedUsers },
-              {
-                returnOriginal: false,
-              }
-            );
-          }
+          updatedDetails.referedBy = referedBy;
         }
         await Users.findOneAndUpdate(
           { email: req.body.email },
-          {
-            isVerified: true,
-            password: hash_password,
-            referedBy: referedBy,
-            referalId: Generate_Referal_Id(),
-          },
+          updatedDetails,
           {
             returnOriginal: false,
           }
@@ -120,7 +109,7 @@ export default class UserController {
     }
   };
 
-  static login = async (req, res) => {
+  static login = async (req: Request, res: Response) => {
     try {
       const { email, password } = req.body;
       if (!email || !password) {
@@ -135,7 +124,10 @@ export default class UserController {
             id: IsValidme.id,
             name: IsValidme.email,
           };
-          let isMatch = await bcrypt.compare(password, IsValidme.password);
+          let isMatch = await bcrypt.compare(
+            password,
+            IsValidme.password as string
+          );
           if (isMatch) {
             let authToken = jwt.sign({ data }, JWT_ACCESS_SECRET, {
               expiresIn: "10day",
@@ -152,10 +144,10 @@ export default class UserController {
       }
     } catch (error) {
       console.log(error);
-      res.status(500).json({ message: error.message });
+      res.status(500).json({ message: (error as Error).message });
     }
   };
-  static resetPassword = async (req, res) => {
+  static resetPassword = async (req: Request, res: Response) => {
     const { email } = req.body;
     if (!email) {
       return res.status(403).json({
@@ -179,19 +171,19 @@ export default class UserController {
       } else {
         user.otp = otp;
         await user.save();
-        transporter.sendMail(mailData, (error, info) => {
-          if (error) {
-            return res.status(500).send("Server error");
-          }
-          return res.json({ message: "Otp has been sent successfully !" });
-        });
+        // transporter.sendMail(mailData, (error, info) => {
+        //   if (error) {
+        //     return res.status(500).send("Server error");
+        //   }
+        return res.json({ message: "Otp has been sent successfully !" });
+        // });
       }
     } catch (error) {
       console.log(error);
       res.status(500).json({ message: error });
     }
   };
-  static verify_Reset_Password_Otp = async (req, res) => {
+  static verify_Reset_Password_Otp = async (req: Request, res: Response) => {
     try {
       let salt = await bcrypt.genSalt(saltround);
       let hash_password = await bcrypt.hash(req.body.password, salt);
@@ -217,7 +209,9 @@ export default class UserController {
       res.status(500).json({ message: "Server error" });
     }
   };
-  static fetch_User_details = async (req, res) => {
+ // TODO: not used anywhere
+
+  static fetch_User_details = async (req: CustomRequest, res: Response) => {
     try {
       const user = await Users.findById(req.id);
       res.status(200).json({ user });
@@ -226,7 +220,9 @@ export default class UserController {
       res.status(500).json({ message: "Server error" });
     }
   };
-  static GET_ALL_USERS = async (req, res) => {
+  // TODO: not used anywhere
+
+  static GET_ALL_USERS = async (req: CustomRequest, res: Response) => {
     try {
       const users = await Users.find({ role: "user" }).select("-password");
       res.status(200).json({ users });
@@ -235,7 +231,8 @@ export default class UserController {
       res.status(500).json({ message: "Server error" });
     }
   };
-  static BLOCK_USER_ACCOUNT = async (req, res) => {
+    // TODO: not used anywhere
+  static BLOCK_USER_ACCOUNT = async (req: Request, res: Response) => {
     const userId = req.params.userId;
     try {
       const user = await Users.findById(userId);
@@ -250,243 +247,35 @@ export default class UserController {
       res.status(500).json({ message: "Internal server error" });
     }
   };
-  static addTransaction = async (req, res) => {
+  // TODO: need to work on it ! ( reward system maybe need to add cron job )
+  static addTransaction = async (req: CustomRequest, res: Response) => {
     try {
       const { account, txid, amount } = req.body;
       if (!account || !txid || !amount) {
         return res.status(403).json({ error: "Please fill all the fields" });
       }
-      const transaction = {
-        account,
-        txid,
-        amount,
-        isRewarded: false,
-        createdAt: new Date(),
-      };
       const user = await Users.findById(req.id);
+
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
-      if (user.referedBy) {
-        const referedByuser = await Users.findOne({
-          referalId: user.referedBy,
-        });
-        let totalReferredTransactionAmount;
-        try {
-          // Aggregate total transaction amount of referred users
-          totalReferredTransactionAmount = await Users.aggregate([
-            {
-              $match: {
-                _id: {
-                  $in: referedByuser.referedUsers.map((refUser) => refUser._id),
-                },
-              },
-            },
-            {
-              $unwind: "$transactionIds",
-            },
-            {
-              $match: {
-                "transactionIds.isRewarded": false,
-              },
-            },
-            {
-              $group: {
-                _id: null,
-                totalAmount: { $sum: "$transactionIds.amount" },
-              },
-            },
-          ]);
-        } catch (error) {
-          console.log(error);
-        }
-        if (totalReferredTransactionAmount.length < 1) {
-          user.transactionIds.push({
-            ...transaction,
-            isRewarded: false,
-          });
-          await user.save();
-          return res
-            .status(200)
-            .json({ message: "Transaction ID appended successfully" });
-        }
-        if (
-          amount / 100 > 1000 &&
-          amount / 100 < 5000 &&
-          amount / 100 < 10000
-        ) {
-          // find percenta
-          referedByuser.reward += ((5 / 100) * amount) / 100;
-          referedByuser.rewardedTransactions.push({
-            ...transaction,
-            isRewarded: true,
-          });
-          await Users.findOneAndUpdate(
-            { _id: req.id },
-            {
-              $set: {
-                "transactionIds.$[].isRewarded": true,
-              },
-            }
-          );
-
-          await referedByuser.save();
-          user.transactionIds.push({
-            ...transaction,
-            isRewarded: true,
-          });
-          await user.save();
-          return res
-            .status(200)
-            .json({ message: "Transaction ID appended successfully" });
-        } else if (amount / 100 > 5000 && amount / 100 < 10000) {
-          user.transactionIds.push({
-            ...transaction,
-            isRewarded: true,
-          });
-          await Users.findOneAndUpdate(
-            { _id: req.id },
-            {
-              $set: {
-                "transactionIds.$[].isRewarded": true,
-              },
-            }
-          );
-          referedByuser.reward += ((6 / 100) * amount) / 100;
-          referedByuser.rewardedTransactions.push({
-            ...transaction,
-            isRewarded: true,
-          });
-          await user.save();
-          await referedByuser.save();
-          return res
-            .status(200)
-            .json({ message: "Transaction ID appended successfully" });
-        } else if (amount / 100 > 10000) {
-          user.transactionIds.push({
-            ...transaction,
-            isRewarded: true,
-          });
-          referedByuser.reward += ((7.5 / 100) * amount) / 100;
-
-          referedByuser.rewardedTransactions.push({
-            ...transaction,
-            isRewarded: true,
-          });
-          await Users.findOneAndUpdate(
-            { _id: req.id },
-            {
-              $set: {
-                "transactionIds.$[].isRewarded": true,
-              },
-            }
-          );
-          await user.save();
-          await referedByuser.save();
-          return res
-            .status(200)
-            .json({ message: "Transaction ID appended successfully" });
-        } else if (totalReferredTransactionAmount[0].totalAmount / 100 > 1000) {
-          // Update previous transactions to have isRewarded: true
-          user.transactionIds.push({
-            ...transaction,
-            isRewarded: true,
-          });
-          referedByuser.reward += ((5 / 100) * amount) / 100;
-          referedByuser.rewardedTransactions.push({
-            ...transaction,
-            isRewarded: true,
-          });
-          await Users.findOneAndUpdate(
-            { _id: req.id },
-            {
-              $set: {
-                "transactionIds.$[].isRewarded": true,
-              },
-            }
-          );
-          await user.save();
-          await referedByuser.save();
-          return res
-            .status(200)
-            .json({ message: "Transaction ID appended successfully" });
-        } else if (totalReferredTransactionAmount[0].totalAmount / 100 > 5000) {
-          // Update previous transactions to have isRewarded: true
-          await Users.findOneAndUpdate(
-            { _id: req.id },
-            {
-              $set: {
-                "transactionIds.$[].isRewarded": true,
-              },
-            }
-          );
-
-          referedByuser.reward += ((6.5 / 100) * amount) / 100;
-          referedByuser.rewardedTransactions.push({
-            ...transaction,
-            isRewarded: true,
-          });
-          user.transactionIds.push({
-            ...transaction,
-            isRewarded: true,
-          });
-          await user.save();
-          await referedByuser.save();
-          return res
-            .status(200)
-            .json({ message: "Transaction ID appended successfully" });
-        } else if (
-          totalReferredTransactionAmount[0].totalAmount / 100 >
-          10000
-        ) {
-          await Users.findOneAndUpdate(
-            { _id: req.id },
-            {
-              $set: {
-                "transactionIds.$[].isRewarded": true,
-              },
-            }
-          );
-
-          referedByuser.reward += ((7.5 / 100) * amount) / 100;
-          referedByuser.rewardedTransactions.push({
-            ...transaction,
-            isRewarded: true,
-          });
-          user.transactionIds.push({
-            ...transaction,
-            isRewarded: true,
-          });
-          await user.save();
-
-          await referedByuser.save();
-          return res
-            .status(200)
-            .json({ message: "Transaction ID appended successfully" });
-        }
-        user.transactionIds.push({
-          ...transaction,
-          isRewarded: false,
-        });
-        await user.save();
-        return res
-          .status(200)
-          .json({ message: "Transaction ID appended successfully" });
-      }
-      user.transactionIds.push({
-        ...transaction,
-        isRewarded: false,
+      await Transaction.create({
+        account,
+        txid,
+        amount,
+        user: user._id,
       });
-      await user.save();
-      return res
-        .status(200)
-        .json({ message: "Transaction ID appended successfully" });
+      res.status(200).json({ message: "Transaction successfull !" });
     } catch (error) {
       console.log(error);
       res.status(400).json({ message: "Error in adding transaction", error });
     }
   };
-  static GET_TOTAL_PURCHASE_AMOUNT = async (req, res) => {
+    // TODO: fixed 
+  static GET_TOTAL_PURCHASE_AMOUNT = async (
+    req: CustomRequest,
+    res: Response
+  ) => {
     try {
       const user = await Users.findById(req.id);
       if (!user) {
@@ -495,16 +284,13 @@ export default class UserController {
       const pipeline = [
         {
           $match: {
-            _id: user._id,
+            user: user._id,
           },
-        },
-        {
-          $unwind: "$transactionIds",
         },
         {
           $group: {
             _id: null,
-            total: { $sum: "$transactionIds.amount" },
+            total: { $sum: "$amount" },
           },
         },
         {
@@ -514,153 +300,127 @@ export default class UserController {
           },
         },
       ];
-      const results = await Users.aggregate(pipeline);
+      const results = await Transaction.aggregate(pipeline);
       if (results.length === 0) {
         return res.json({ total: 0 });
       }
       const total = results[0].total;
-      res.json({ total });
+      res.status(200).json({ total });
     } catch (error) {
       console.error("Error fetching total:", error);
       res.status(500).json({ error: "Internal server error" });
     }
   };
-  static GET_TOTAL_PURCHASE_OF_ALL_USERS = async (req, res) => {
+    // TODO: fixed
+  static GET_TOTAL_PURCHASE_OF_ALL_USERS = async (
+    req: Request,
+    res: Response
+  ) => {
     try {
       const pipeline = [
         {
-          $match: {
-            role: { $ne: "admin" }, // Exclude admin user
-          },
-        },
-        {
-          $unwind: "$transactionIds",
-        },
-        {
           $group: {
             _id: null,
-            total: { $sum: "$transactionIds.amount" },
+            total: {
+              $sum: "$amount",
+            },
           },
         },
         {
           $project: {
             _id: 0,
-            total: 1,
           },
         },
       ];
-      const results = await Users.aggregate(pipeline);
+      const results = await Transaction.aggregate(pipeline);
       if (results.length === 0) {
-        return res.json({ total: 0 });
+        return res.status(200).json({ total: 0 });
       }
       const total = results[0].total;
-      res.json({ total });
+      res.status(200).json({ total });
     } catch (error) {
       console.error("Error fetching total:", error);
       res.status(500).json({ error: "Internal server error" });
     }
   };
-  static CLAIM_REQUEST = async (req, res) => {
+    // TODO: fixed
+  static CLAIM_REQUEST = async (req: CustomRequest, res: Response) => {
     try {
       const userId = req.id;
       const { amount } = req.body;
       const user = await Users.findById(userId);
-      console.log(amount);
+
       if (!amount || !user) {
         console.log("Please fill all the fields");
         return res.status(400).json({ message: "Please fill all the fields" });
       }
-      if (user.reward < amount) {
-        console.log(user.reward);
-        console.log("Insufficient reward");
-        return res.status(400).json({ message: "Insufficient reward" });
-      }
-      await ClaimRequests.create({
-        email: user.email,
-        amount,
-        status: "pending",
+
+      const claimRequests = await ClaimRequests.find({
+        email: user?.email,
+        status: "pending", // Filtering by status 'pending'
       });
-      return res
-        .status(200)
-        .json({ message: "Claim request added successfully" });
+
+      if (claimRequests.length > 0) {
+        return res
+          .status(201)
+          .json({ message: "Pending claim requests found" });
+      } else {
+        if (user.reward < amount) {
+          console.log(user.reward);
+          console.log("Insufficient reward");
+          return res.status(400).json({ message: "Insufficient reward" });
+        }
+        await ClaimRequests.create({
+          email: user.email,
+          amount,
+          status: "pending",
+        });
+
+        return res
+          .status(200)
+          .json({ message: "Claim request added successfully" });
+      }
     } catch (error) {
       console.error(error);
       res.status(500).json({ message: "Server error" });
     }
   };
-  static GET_ALL_TRANSACTIONS = async (req, res) => {
+    // TODO: fixed
+  static GET_ALL_TRANSACTIONS = async (req: CustomRequest, res: Response) => {
     try {
       const user = await Users.findById(req.id);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
 
-      const page = parseInt(req.query.page) || 1;
-      const perPage = parseInt(req.query.perPage) || 10;
+      const page = parseInt(req.query.page as string) || 1;
+      const perPage = parseInt(req.query.perPage as string) || 10;
+      const skip = (page - 1) * perPage;
 
-      const pipeline = [
-        {
-          $match: {
-            _id: user._id,
-          },
-        },
-        {
-          $unwind: "$transactionIds",
-        },
-        {
-          $sort: { "transactionIds.createdAt": -1 }, // Sort by createdAt in descending order
-        },
-        {
-          $skip: (page - 1) * perPage,
-        },
-        {
-          $limit: perPage,
-        },
-        {
-          $project: {
-            _id: 0,
-            account: "$transactionIds.account",
-            txid: "$transactionIds.txid",
-            amount: "$transactionIds.amount",
-            isRewarded: "$transactionIds.isRewarded",
-            createdAt: "$transactionIds.createdAt",
-            referedBy: "$referedBy",
-          },
-        },
-      ];
+      const transactions = await Transaction.find({
+        user: user._id,
+      })
+        .skip(skip)
+        .limit(perPage);
 
-      const results = await Users.aggregate(pipeline);
-
-      const totalCount = await Users.aggregate([
-        {
-          $match: {
-            _id: user._id,
-          },
-        },
-        {
-          $unwind: "$transactionIds",
-        },
-        {
-          $count: "total",
-        },
-      ]);
+      const totalCount = await Transaction.countDocuments({
+        user: user._id,
+      });
 
       res.status(200).json({
-        transactions: results,
+        transactions,
         page,
         perPage,
-        totalRecords: totalCount[0] ? totalCount[0].total : 0,
-        totalPages: Math.ceil(
-          totalCount[0] ? totalCount[0].total / perPage : 0
-        ),
+        totalRecords: totalCount,
+        totalPages: Math.ceil(totalCount / perPage),
       });
     } catch (error) {
       console.error("Error fetching transactions:", error);
       res.status(500).json({ error: "Internal server error" });
     }
   };
-
-  static GET_REFFERAL_ID = async (req, res) => {
+  // TODO: fixed
+  static GET_REFFERAL_ID = async (req: CustomRequest, res: Response) => {
     try {
       const user = await Users.findById(req.id);
       if (!user) {
@@ -672,21 +432,35 @@ export default class UserController {
       res.status(500).json({ message: "Server error" });
     }
   };
-
-  static GET_CLAIM_REQUESTS = async (req, res) => {
+  // TODO: fixed
+  static GET_CLAIM_REQUESTS = async (req: CustomRequest, res: Response) => {
     try {
-      const page = parseInt(req.query.page) || 1;
+      const page = parseInt(req.query.page as string) || 1;
       const UserId = req.id;
-      const perPage = parseInt(req.query.perPage) || 10;
+      const perPage = parseInt(req.query.perPage as string) || 10;
       const user = await Users.findById(UserId);
       const skip = (page - 1) * perPage;
-  
+
+      // check if user exists or not !
+      if (!user) {
+        return res.status(200).json({
+          claimRequests: [],
+          page,
+          perPage,
+          totalRecords: 0,
+          totalPages: 0,
+        });
+      }
       // Query the database with pagination
-      const results = await ClaimRequests.find({ email: user.email })
+      const results = await ClaimRequests.find({ email: user?.email })
         .skip(skip)
         .limit(perPage);
+
       // Get the total count of records for pagination calculation
-      const totalCount = await ClaimRequests.countDocuments({ email: user.email });
+      const totalCount = await ClaimRequests.countDocuments({
+        email: user?.email,
+      });
+
       res.status(200).json({
         claimRequests: results,
         page,
@@ -699,4 +473,4 @@ export default class UserController {
       res.status(500).json({ message: "Server error" });
     }
   };
-};
+}

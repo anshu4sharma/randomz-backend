@@ -1,5 +1,7 @@
+import { NextFunction, Response } from "express";
+import { CustomRequest } from "../controller/User";
 
-const reqId = async (req, res, next) => {
+const reqId = async (req:CustomRequest, res:Response, next:NextFunction) => {
   const token = req.params.id;
   try {
     if (!token) {
