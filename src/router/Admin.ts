@@ -6,6 +6,7 @@ import UserController from "../controller/User";
 
 const router = express.Router();
 
+// TODO: need to change the admin login system 
 router.post("/login-otp", AdminController.sendLoginOtp);
 
 router.post("/login", AdminController.login);

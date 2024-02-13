@@ -16,13 +16,13 @@ router.post("/reset-password", UserController.resetPassword);
 // verify otp and update password
 router.put("/verify-reset-otp", UserController.verify_Reset_Password_Otp);
 
-// TODO: need to remove ( Not used anywhere)
+// FIXME: need to remove ( Not used anywhere)
 router.get("/fetch-user", authUser, UserController.fetch_User_details);
 
-// TODO: need to remove ( Not used anywhere)
+// FIXME: need to remove ( Not used anywhere)
 router.get("/get-all-users", UserController.GET_ALL_USERS);
 
-// TODO: need to remove ( Not used anywhere)
+// FIXME: need to remove ( Not used anywhere)
 router.put("/block/:userId", UserController.BLOCK_USER_ACCOUNT);
 
 router.post("/addTransaction", authUser, UserController.addTransaction);

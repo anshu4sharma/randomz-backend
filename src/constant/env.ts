@@ -12,3 +12,7 @@ export const PORT = process.env.PORT  as any
 
 export const MONGO_URL = process.env.MONGO_URL  as any
 
+export const ADMIN_EMAIL = process.env.ADMIN_EMAIL  as any
+
+export const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD  as any
+

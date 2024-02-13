@@ -6,16 +6,23 @@ import AdminRoute from "./router/Admin";
 import bodyParser from "body-parser";
 import "./db/conn";
 import { PORT } from "./constant/env";
+import CheckAdminExist from "./utils/preseed";
 
 const app = express();
 
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
-// To remove data using these defaults:
+
+// preseed data
+CheckAdminExist()
+
+// mongodb data sanitization to prevent NoSQL Injection
 app.use(mongoSanitize());
+
 app.use(cors({ origin: "*", credentials: true }));
 
 app.use("/users", UserRoute);
+
 app.use("/admin", AdminRoute);
 
 app.listen(PORT, () => {

@@ -31,21 +31,14 @@ const UserSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
-    referedUsers: {
-      type: [Object],
-      default: [],
-    },
     otp: {
       required: false,
       type: Number,
+      default: null,
     },
     reward: {
       type: Number,
       default: 0,
-    },
-    transactionIds: {
-      type: [Object],
-      default: [],
     },
     referalId: {
       type: String,
@@ -55,15 +48,11 @@ const UserSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
-    rewardedTransactions: {
-      type: [Object],
-      default: [],
-    },
   },
   { timestamps: true }
 );
 
 //  here we are creating model / collection
-const Users =  mongoose.model("User", UserSchema);
+const Users = mongoose.model("User", UserSchema);
 
-export default Users
+export default Users;

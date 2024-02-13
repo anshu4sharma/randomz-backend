@@ -7,11 +7,11 @@ import { Generate_Referal_Id } from "../utils/Users";
 import { Request, Response } from "express";
 import { transporter } from "../config/mail-server";
 import { EMAIL, JWT_ACCESS_SECRET } from "../constant/env";
+import { saltround } from "../constant";
 
 export interface CustomRequest extends Request {
   id?: string; // Assuming id is a string
 }
-const saltround = 10;
 
 export default class UserController {
   static sendEmail = async (req: Request, res: Response) => {
@@ -26,6 +26,7 @@ export default class UserController {
         let user = {
           email,
           otp,
+          referalId: Generate_Referal_Id(),
         };
         const mailData = {
           from: EMAIL,
@@ -77,7 +78,6 @@ export default class UserController {
         let updatedDetails = {
           isVerified: true,
           password: hash_password,
-          referalId: Generate_Referal_Id(),
           referedBy: "",
         };
 

@@ -179,61 +179,20 @@ export default class UserController {
           },
         },
         {
-          $unwind: {
-            path: "$totalrefferdUser",
-          },
-        },
-        {
-          $lookup: {
-            from: "transactions",
-            localField: "totalrefferdUser",
-            foreignField: "user",
-            as: "result",
-          },
-        },
-        {
-          $addFields: {
-            totalSumofAmount: {
-              $map: {
-                input: "$result",
-                as: "user",
-                in: "$$user.amount",
-              },
+          $project:
+            /**
+             * specifications: The fields to
+             *   include or exclude.
+             */
+            {
+              _id: 1,
+              email: 1,
+              referalId: 1,
+              referedBy: 1,
+              createdAt: 1,
+              selfpurchase: 1,
+              referedUsers: 1,
             },
-          },
-        },
-        {
-          $addFields: {
-            totalReferedUsersPurchaseSum: {
-              $sum: "$totalSumofAmount",
-            },
-          },
-        },
-        {
-          $group: {
-            _id: "$_id",
-            email: {
-              $first: "$email",
-            },
-            referalId: {
-              $first: "$referalId",
-            },
-            referedBy: {
-              $first: "$referedBy",
-            },
-            createdAt: {
-              $first: "$createdAt",
-            },
-            selfpurchase: {
-              $first: "$selfpurchase",
-            },
-            referedUsers: {
-              $first: "$referedUsers",
-            },
-            totalReferedUsersPurchaseSum: {
-              $first: "$totalReferedUsersPurchaseSum",
-            },
-          },
         },
         {
           $sort: { createdAt: -1 }, // Sort by createdAt in descending order
@@ -244,7 +203,7 @@ export default class UserController {
         {
           $limit: perPage,
         },
-      ];
+      ]
       const result = await Users.aggregate(pipeline as any);
       res.status(200).json({
         result,
