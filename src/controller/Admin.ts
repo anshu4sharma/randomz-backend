@@ -5,8 +5,15 @@ import { EMAIL, JWT_ACCESS_SECRET } from "../constant/env";
 import { transporter } from "../config/mail-server";
 import { Request, Response } from "express";
 import Transaction from "../model/Transaction";
-import mongoose from "mongoose";
-import bcrypt from 'bcrypt'
+import mongoose, { Types } from "mongoose";
+import bcrypt from "bcrypt";
+import { VALIDATE_LOGIN } from "../zod-schema/User.schema";
+import { sendZodError } from "../utils/Users";
+import { ZodError } from "zod";
+import {
+  VALIDATE_FIND_TEAM,
+  VALIDATE_HANDLE_CLAIM_REQUEST,
+} from "../zod-schema/Admin.schema";
 export default class UserController {
   // static sendLoginOtp = async (req: Request, res: Response) => {
   //   try {
@@ -46,10 +53,7 @@ export default class UserController {
 
   static login = async (req: Request, res: Response) => {
     try {
-      const { email, password } = req.body;
-      if (!email || !password) {
-        return res.status(403).send("please fill the data");
-      }
+      const { email, password } = VALIDATE_LOGIN.parse(req.body);
       let IsValidme = await Users.findOne({ email: email, role: "admin" });
       if (!IsValidme) {
         return res.status(403).json({ message: "Invalid credential" });
@@ -73,8 +77,11 @@ export default class UserController {
         }
       }
     } catch (error) {
-      console.log(error);
-      res.status(500).json({ message: (error as Error).message });
+      if (error instanceof ZodError) {
+        sendZodError(res, error);
+      } else {
+        res.status(500).json({ message: (error as Error).message });
+      }
     }
   };
   static GET_ALL_TRANSACTIONS = async (req: Request, res: Response) => {
@@ -208,7 +215,7 @@ export default class UserController {
         {
           $limit: perPage,
         },
-      ]
+      ];
       const result = await Users.aggregate(pipeline as any);
       res.status(200).json({
         result,
@@ -245,11 +252,10 @@ export default class UserController {
   };
   static HANDLE_CLAIM_REQUEST = async (req: Request, res: Response) => {
     try {
-      const { id, status } = req.body;
-      if (!id || !status) {
-        return res.status(400).json({ message: "Please fill all fields!" });
-      }
-      let data = await ClaimRequests.findById(id);
+      const { id, status, transactionId } = VALIDATE_HANDLE_CLAIM_REQUEST.parse(
+        req.body
+      );
+      let data = await ClaimRequests.findById(new Types.ObjectId(id));
       if (!data) {
         return res.status(400).json({ message: "Invalid id" });
       }
@@ -271,7 +277,7 @@ export default class UserController {
             .json({ message: "Insufficient reward balance" });
         }
         user.reward = user.reward - data.amount;
-        data.transactionId = req.body.transactionId;
+        data.transactionId = transactionId;
         await user.save();
         await data.save();
         // handle claim maybe ned to mulitply by 100 incase we dont multiplt the amlunt by 100 fron frontend
@@ -282,20 +288,24 @@ export default class UserController {
         return res.status(403).json({ message: "Invalid transaction status" });
       }
     } catch (error) {
-      console.error(error);
-      res.status(500).json({ message: "Server error" });
+      if (error instanceof ZodError) {
+        sendZodError(res, error);
+      } else {
+        res.status(500).json({ message: (error as Error).message });
+      }
     }
   };
   static FIND_TEAM = async (req: Request, res: Response) => {
     try {
-      if (!req.params.id) {
+      const { id } = VALIDATE_FIND_TEAM.parse(req.params);
+      if (!id) {
         return res.status(400).json({ message: "Please fill all fields!" });
       }
       const page = parseInt(req.query.page as string) || 1; // Default to page 1 if not provided
       const perPage = parseInt(req.query.perPage as string) || 10; // Default to 10 items per page
       const skip = (page - 1) * perPage;
       const data = await Users.find(
-        { referedBy: req.params.id },
+        { referedBy: id },
         {
           _id: 1,
           email: 1,
@@ -309,7 +319,7 @@ export default class UserController {
         .limit(perPage);
 
       const totalCount = await Users.countDocuments({
-        referedBy: req.params.id,
+        referedBy: id,
       });
 
       if (data.length > 0) {
@@ -324,8 +334,11 @@ export default class UserController {
         return res.status(400).json({ message: "No team found" });
       }
     } catch (error) {
-      console.log(error);
-      res.status(500).json({ message: "Server error" });
+      if (error instanceof ZodError) {
+        sendZodError(res, error);
+      } else {
+        res.status(500).json({ message: (error as Error).message });
+      }
     }
   };
 }

@@ -3,11 +3,19 @@ import Transaction from "../model/Transaction";
 import ClaimRequests from "../model/ClaimRequests";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
-import { Generate_Referal_Id } from "../utils/Users";
+import { Generate_Referal_Id, sendZodError } from "../utils/Users";
 import { Request, Response } from "express";
 import { transporter } from "../config/mail-server";
 import { EMAIL, JWT_ACCESS_SECRET } from "../constant/env";
 import { saltround } from "../constant";
+import { ZodError, isValid, z } from "zod";
+import {
+  VALIDATE_CLAIM_REQUEST,
+  VALIDATE_LOGIN,
+  VALIDATE_SEND_EMAIL,
+  VALIDATE_SIGNUP,
+  VALIDATE_VERIFY_RESET_PASSWORD_OTP,
+} from "../zod-schema/User.schema";
 
 export interface CustomRequest extends Request {
   id?: string; // Assuming id is a string
@@ -15,57 +23,52 @@ export interface CustomRequest extends Request {
 
 export default class UserController {
   static sendEmail = async (req: Request, res: Response) => {
-    const { email } = req.body;
-    if (!email) {
-      res.status(403).json({
-        message: "Please fill all the fields",
-      });
-    } else {
-      try {
-        const otp = Math.floor(Math.random() * 9000 + 1000);
-        let user = {
-          email,
-          otp,
-          referalId: Generate_Referal_Id(),
-        };
-        const mailData = {
-          from: EMAIL,
-          to: req.body.email,
-          subject: "Verifcation code",
-          text: null,
-          html: `<span>Your Verification code is ${otp}</span>`,
-        };
-        let IsEmail = await Users.findOne({ email: req.body.email });
-        if (IsEmail) {
-          return res.status(403).json({ message: "Account already exists" });
-        } else {
-          let userInfo = new Users(user);
-          await userInfo.save();
-          // transporter.sendMail(mailData as any, (error, info) => {
-          //   if (error) {
-          //     res.status(500).send("Server error");
-          //   }
-          res.json({ message: "Otp has been sent successfully !" });
-          // });
-        }
-      } catch (error) {
-        console.log(error);
-        res.status(500).json({ message: "failed to send otp !" });
+    try {
+      const { email } = VALIDATE_SEND_EMAIL.parse(req.body);
+      const otp = Math.floor(Math.random() * 9000 + 1000);
+      let user = {
+        email,
+        otp,
+        referalId: Generate_Referal_Id(),
+      };
+      const mailData = {
+        from: EMAIL,
+        to: email,
+        subject: "Verifcation code",
+        text: null,
+        html: `<span>Your Verification code is ${otp}</span>`,
+      };
+      let IsEmail = await Users.findOne({ email: email });
+      if (IsEmail) {
+        return res.status(403).json({ message: "Account already exists" });
+      } else {
+        let userInfo = new Users(user);
+        await userInfo.save();
+        // transporter.sendMail(mailData as any, (error, info) => {
+        //   if (error) {
+        //     res.status(500).send("Server error");
+        //   }
+        res.json({ message: "Otp has been sent successfully !" });
+        // });
+      }
+    } catch (error) {
+      if (error instanceof ZodError) {
+        // Handle Zod validation error
+        sendZodError(res, error);
+      } else {
+        console.error(error);
+        res.status(500).json({ message: "Failed to send OTP" });
       }
     }
   };
 
   static signup = async (req: Request, res: Response) => {
-    const { email, password, referedBy, otp } = req.body;
-    if (!email || !password || !otp) {
-      return res.status(403).json({
-        message: "Please fill all the fields",
-      });
-    }
     try {
+      let { email, password, referedBy, otp } = VALIDATE_SIGNUP.parse(req.body);
       let IsValid = await Users.findOne({
-        $and: [{ email: req.body.email }, { otp: req.body.otp }],
+        $and: [{ email: email }, { otp: otp }],
       });
+
       if (IsValid) {
         if (IsValid.isVerified) {
           return res.status(200).json({
@@ -90,13 +93,9 @@ export default class UserController {
           }
           updatedDetails.referedBy = referedBy;
         }
-        await Users.findOneAndUpdate(
-          { email: req.body.email },
-          updatedDetails,
-          {
-            returnOriginal: false,
-          }
-        );
+        await Users.findOneAndUpdate({ email: email }, updatedDetails, {
+          returnOriginal: false,
+        });
         return res
           .status(200)
           .json({ message: "You are now successfully verified" });
@@ -104,17 +103,17 @@ export default class UserController {
         return res.status(401).json({ message: "Wrong Otp !" });
       }
     } catch (error) {
-      console.log(error);
-      res.status(500).json({ message: "Server error" });
+      if (error instanceof ZodError) {
+        sendZodError(res, error);
+      } else {
+        res.status(500).json({ message: "Server error" });
+      }
     }
   };
 
   static login = async (req: Request, res: Response) => {
     try {
-      const { email, password } = req.body;
-      if (!email || !password) {
-        return res.status(403).send("please fill the data");
-      }
+      const { email, password } = VALIDATE_LOGIN.parse(req.body);
       let IsValidme = await Users.findOne({ email: email });
       if (!IsValidme) {
         return res.status(403).json({ message: "Invalid credential" });
@@ -143,26 +142,24 @@ export default class UserController {
         }
       }
     } catch (error) {
-      console.log(error);
-      res.status(500).json({ message: (error as Error).message });
+      if (error instanceof ZodError) {
+        sendZodError(res, error);
+      } else {
+        res.status(500).json({ message: (error as Error).message });
+      }
     }
   };
   static resetPassword = async (req: Request, res: Response) => {
-    const { email } = req.body;
-    if (!email) {
-      return res.status(403).json({
-        message: "Please fill all the fields",
-      });
-    }
-    const otp = Math.floor(Math.random() * 9000 + 1000);
-    const mailData = {
-      from: EMAIL,
-      to: req.body.email,
-      subject: "Verifcation code for password reset",
-      text: null,
-      html: `<span>Your Verification code is ${otp}</span>`,
-    };
     try {
+      const { email } = VALIDATE_SEND_EMAIL.parse(req.body);
+      const otp = Math.floor(Math.random() * 9000 + 1000);
+      const mailData = {
+        from: EMAIL,
+        to: email,
+        subject: "Verifcation code for password reset",
+        text: null,
+        html: `<span>Your Verification code is ${otp}</span>`,
+      };
       const user = await Users.findOne({ email });
       if (!user) {
         return res.status(403).json({
@@ -179,20 +176,26 @@ export default class UserController {
         // });
       }
     } catch (error) {
-      console.log(error);
-      res.status(500).json({ message: error });
+      if (error instanceof ZodError) {
+        sendZodError(res, error);
+      } else {
+        res.status(500).json({ message: error });
+      }
     }
   };
   static verify_Reset_Password_Otp = async (req: Request, res: Response) => {
     try {
+      const { email, password, otp } = VALIDATE_VERIFY_RESET_PASSWORD_OTP.parse(
+        req.body
+      );
       let salt = await bcrypt.genSalt(saltround);
-      let hash_password = await bcrypt.hash(req.body.password, salt);
+      let hash_password = await bcrypt.hash(password, salt);
       let IsValid = await Users.findOne({
-        $and: [{ email: req.body.email }, { otp: req.body.otp }],
+        $and: [{ email: email }, { otp: otp }],
       });
       if (IsValid) {
         await Users.findOneAndUpdate(
-          { email: req.body.email },
+          { email: email },
           { password: hash_password },
           {
             returnOriginal: false,
@@ -205,11 +208,14 @@ export default class UserController {
         res.status(401).json({ message: "Wrong Otp !" });
       }
     } catch (error) {
-      console.log(error);
-      res.status(500).json({ message: "Server error" });
+      if (error instanceof ZodError) {
+        sendZodError(res, error);
+      } else {
+        res.status(500).json({ message: error });
+      }
     }
   };
- // TODO: not used anywhere
+  // TODO: not used anywhere
 
   static fetch_User_details = async (req: CustomRequest, res: Response) => {
     try {
@@ -231,7 +237,7 @@ export default class UserController {
       res.status(500).json({ message: "Server error" });
     }
   };
-    // TODO: not used anywhere
+  // TODO: not used anywhere
   static BLOCK_USER_ACCOUNT = async (req: Request, res: Response) => {
     const userId = req.params.userId;
     try {
@@ -271,7 +277,7 @@ export default class UserController {
       res.status(400).json({ message: "Error in adding transaction", error });
     }
   };
-    // TODO: fixed 
+  // TODO: fixed
   static GET_TOTAL_PURCHASE_AMOUNT = async (
     req: CustomRequest,
     res: Response
@@ -311,7 +317,7 @@ export default class UserController {
       res.status(500).json({ error: "Internal server error" });
     }
   };
-    // TODO: fixed
+  // TODO: fixed
   static GET_TOTAL_PURCHASE_OF_ALL_USERS = async (
     req: Request,
     res: Response
@@ -343,13 +349,12 @@ export default class UserController {
       res.status(500).json({ error: "Internal server error" });
     }
   };
-    // TODO: fixed
+  // TODO: fixed
   static CLAIM_REQUEST = async (req: CustomRequest, res: Response) => {
     try {
       const userId = req.id;
-      const { amount } = req.body;
+      const { amount } = VALIDATE_CLAIM_REQUEST.parse(req.body);
       const user = await Users.findById(userId);
-
       if (!amount || !user) {
         console.log("Please fill all the fields");
         return res.status(400).json({ message: "Please fill all the fields" });
@@ -381,11 +386,14 @@ export default class UserController {
           .json({ message: "Claim request added successfully" });
       }
     } catch (error) {
-      console.error(error);
-      res.status(500).json({ message: "Server error" });
+      if (error instanceof ZodError) {
+        sendZodError(res, error);
+      } else {
+        res.status(500).json({ message: (error as Error).message });
+      }
     }
   };
-    // TODO: fixed
+  // TODO: fixed
   static GET_ALL_TRANSACTIONS = async (req: CustomRequest, res: Response) => {
     try {
       const user = await Users.findById(req.id);

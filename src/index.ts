@@ -14,12 +14,15 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 
 // preseed data
-CheckAdminExist()
+CheckAdminExist();        // return;
+
 
 // mongodb data sanitization to prevent NoSQL Injection
 app.use(mongoSanitize());
 
 app.use(cors({ origin: "*", credentials: true }));
+
+// zod middleware
 
 app.use("/users", UserRoute);
 
