@@ -25,8 +25,6 @@ app.use(mongoSanitize());
 
 app.use(cors({ origin: "*", credentials: true }));
 
-// zod middleware
-
 app.use("/users", UserRoute);
 
 app.use("/admin", AdminRoute);

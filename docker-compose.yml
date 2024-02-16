@@ -1,0 +1,62 @@
+version: '3.8'
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "4000:4000"
+    environment:
+      MONGO_URL: mongodb://mongo_db:27017/randomz
+      JWT_ACCESS_SECRET: 
+      EMAIL: 
+      PASSWORD: 
+      PORT: 4000
+      ADMIN_EMAIL:
+      ADMIN_PASSWORD: 
+      EMAIL_FROM: 
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      SMTP_HOST: smtp.mailgun.org
+      SMTP_SECURE: false
+      SMTP_PORT: 587
+      SMTP_PROVIDER: mailgun
+    depends_on:
+      - mongo_db
+      - redis
+    volumes:
+      - .:/api
+      - /api/node_modules
+
+  #redis     
+  redis:
+    image: redis:latest
+    container_name: redis-server
+    ports:
+      - "6379:6379"
+    # restart: always
+    volumes:
+      - redis_data:/data
+
+  #mongodb database
+  mongo_db:
+    container_name: db_container
+    image: mongo:latest
+    # restart: always  
+    volumes:
+      - mongo_data:/data/db
+    ports:
+      - "27017:27017"
+
+  # Package watcher service
+  package-watcher:
+    image: node:latest
+    command: sh -c "npm install -g chokidar-cli && chokidar '/api/package.json' -c 'npm install'"
+    volumes:
+      - .:/api
+    depends_on:
+      - api
+volumes:
+  mongo_data: {}
+  redis_data: {}

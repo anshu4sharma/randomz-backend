@@ -1,11 +1,10 @@
 import Users from "../model/UserSchema";
 import ClaimRequests from "../model/ClaimRequests";
 import jwt from "jsonwebtoken";
-import { EMAIL, JWT_ACCESS_SECRET } from "../constant/env";
-import { transporter } from "../config/mail-server";
+import { JWT_ACCESS_SECRET } from "../constant/env";
 import { Request, Response } from "express";
 import Transaction from "../model/Transaction";
-import mongoose, { Types } from "mongoose";
+import { Types } from "mongoose";
 import bcrypt from "bcrypt";
 import { VALIDATE_LOGIN } from "../zod-schema/User.schema";
 import { sendZodError } from "../utils/Users";
