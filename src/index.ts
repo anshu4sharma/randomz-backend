@@ -7,6 +7,7 @@ import bodyParser from "body-parser";
 import "./db/conn";
 import { PORT } from "./constant/env";
 import CheckAdminExist from "./utils/preseed";
+import { startBullMqWorker } from "./services/bullmq/email-worker";
 
 const app = express();
 
@@ -16,6 +17,8 @@ app.use(bodyParser.json());
 // preseed data
 CheckAdminExist();        // return;
 
+// BULLMQ worker 
+startBullMqWorker()
 
 // mongodb data sanitization to prevent NoSQL Injection
 app.use(mongoSanitize());

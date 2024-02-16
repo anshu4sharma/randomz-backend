@@ -16,10 +16,10 @@ const CheckAdminExist = async () => {
         isVerified: true,
         referalId:Generate_Referal_Id()
       });
-      console.log("Admin Created !!");
+      console.log("Admin User Created !!");
       return;
     }
-    console.log("Admin Exist !");
+    console.log("Admin User Already Exist !");
     return;
   } catch (error) {
     throw error;

@@ -5,10 +5,9 @@ import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { Generate_Referal_Id, sendZodError } from "../utils/Users";
 import { Request, Response } from "express";
-import { transporter } from "../config/mail-server";
-import { EMAIL, JWT_ACCESS_SECRET } from "../constant/env";
+import { JWT_ACCESS_SECRET } from "../constant/env";
 import { saltround } from "../constant";
-import { ZodError, isValid, z } from "zod";
+import { ZodError } from "zod";
 import {
   VALIDATE_CLAIM_REQUEST,
   VALIDATE_LOGIN,
@@ -16,6 +15,7 @@ import {
   VALIDATE_SIGNUP,
   VALIDATE_VERIFY_RESET_PASSWORD_OTP,
 } from "../zod-schema/User.schema";
+import { enqueueEmail } from "../services/bullmq/email-queue";
 
 export interface CustomRequest extends Request {
   id?: string; // Assuming id is a string
@@ -32,10 +32,9 @@ export default class UserController {
         referalId: Generate_Referal_Id(),
       };
       const mailData = {
-        from: EMAIL,
         to: email,
         subject: "Verifcation code",
-        text: null,
+        text: "",
         html: `<span>Your Verification code is ${otp}</span>`,
       };
       let IsEmail = await Users.findOne({ email: email });
@@ -44,12 +43,8 @@ export default class UserController {
       } else {
         let userInfo = new Users(user);
         await userInfo.save();
-        // transporter.sendMail(mailData as any, (error, info) => {
-        //   if (error) {
-        //     res.status(500).send("Server error");
-        //   }
+        enqueueEmail(mailData);
         res.json({ message: "Otp has been sent successfully !" });
-        // });
       }
     } catch (error) {
       if (error instanceof ZodError) {
@@ -154,10 +149,9 @@ export default class UserController {
       const { email } = VALIDATE_SEND_EMAIL.parse(req.body);
       const otp = Math.floor(Math.random() * 9000 + 1000);
       const mailData = {
-        from: EMAIL,
         to: email,
         subject: "Verifcation code for password reset",
-        text: null,
+        text: "",
         html: `<span>Your Verification code is ${otp}</span>`,
       };
       const user = await Users.findOne({ email });
@@ -168,12 +162,8 @@ export default class UserController {
       } else {
         user.otp = otp;
         await user.save();
-        // transporter.sendMail(mailData, (error, info) => {
-        //   if (error) {
-        //     return res.status(500).send("Server error");
-        //   }
+        enqueueEmail(mailData);
         return res.json({ message: "Otp has been sent successfully !" });
-        // });
       }
     } catch (error) {
       if (error instanceof ZodError) {

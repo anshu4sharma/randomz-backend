@@ -28,11 +28,8 @@ const gracefulShutdown = async (signal:string) => {
   }
 };
 
-// Listen for the SIGTERM signal and perform graceful shutdown
-process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+const signals = ['SIGTERM', 'SIGINT', 'SIGQUIT'];
 
-// Listen for the SIGINT (Ctrl+C) signal and perform graceful shutdown
-process.on('SIGINT', () => gracefulShutdown('SIGINT'));
-
-// Listen for the SIGQUIT signal and perform graceful shutdown
-process.on('SIGQUIT', () => gracefulShutdown('SIGQUIT'));
+signals.map(signal => {
+  process.on(signal, () => gracefulShutdown(signal));
+});

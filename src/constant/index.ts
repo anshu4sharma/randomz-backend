@@ -1,5 +1,6 @@
 export const saltround = 10;
 
+export const EMAIL_QUEUE = "emailQueue"
 
 const RewardAmount = {
   REWARD_FOR_A_PURCHASE_AMOUNT: 10000,
