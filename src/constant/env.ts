@@ -30,3 +30,5 @@ export const SMTP_SECURE = process.env.SMTP_SECURE  as any
 
 export const SMTP_PROVIDER = process.env.SMTP_PROVIDER  as any
 
+export const NODE_ENV = process.env.NODE_ENV  as any
+

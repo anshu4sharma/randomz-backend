@@ -6,6 +6,7 @@ import {
   SMTP_PORT,
   SMTP_PROVIDER
 } from "../constant/env";
+import logger from "../logger/winston.logger";
 
 export const transporter = nodemailer.createTransport({
   host: String(SMTP_HOST),
@@ -18,6 +19,6 @@ export const transporter = nodemailer.createTransport({
 });
 
 transporter.on("error", (err) => {
-  console.log(err);
+ logger.error(err);
 });
 

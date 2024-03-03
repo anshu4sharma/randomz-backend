@@ -1,5 +1,6 @@
 import { saltround } from "../constant";
 import { ADMIN_EMAIL, ADMIN_PASSWORD } from "../constant/env";
+import logger from "../logger/winston.logger";
 import Users from "../model/UserSchema";
 import { Generate_Referal_Id } from "./Users";
 import bcrypt from 'bcrypt'
@@ -16,10 +17,10 @@ const CheckAdminExist = async () => {
         isVerified: true,
         referalId:Generate_Referal_Id()
       });
-      console.log("Admin User Created !!");
+      logger.info("Admin User Created !!");
       return;
     }
-    console.log("Admin User Already Exist !");
+    logger.info("Admin User Already Exist !");
     return;
   } catch (error) {
     throw error;

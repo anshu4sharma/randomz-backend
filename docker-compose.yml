@@ -22,6 +22,7 @@ services:
       SMTP_SECURE: false
       SMTP_PORT: 587
       SMTP_PROVIDER: mailgun
+      NODE_ENV: production
     depends_on:
       - mongo_db
       - redis

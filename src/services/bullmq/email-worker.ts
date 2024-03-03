@@ -1,9 +1,10 @@
 import { Worker, Job } from "bullmq";
 import { transporter } from "../../config/mail-server";
-import { EMAIL_FROM } from "../../constant/env";
+import { EMAIL_FROM, NODE_ENV } from "../../constant/env";
 import { IEMAIL } from "../../@types";
 import redisClient from "../../config/redisClient";
 import { EMAIL_QUEUE } from "../../constant";
+import logger from "../../logger/winston.logger";
 
 export const startBullMqWorker = async () => {
   try {
@@ -16,9 +17,9 @@ export const startBullMqWorker = async () => {
         try {
           // Send the email using Nodemailer
           await sendEmail({ to, subject, text, html });
-          console.log("Email sent successfully:", job.id);
+          logger.info("Email sent successfully:", job.id);
         } catch (error) {
-          console.error("Error sending email:", error);
+          logger.error("Error sending email:", error);
           // Retry the job if it fails
           throw new Error(error as any);
         }
@@ -30,13 +31,13 @@ export const startBullMqWorker = async () => {
       console.log(`Worker completed job ${job.id}`);
     });
     worker.on("ready", () => {
-      console.log("BullmQ Worker is now ready to start !");
+      logger.info("BullmQ Worker is now ready to start !");
     });
     worker.on("failed", (job, error) => {
-      console.error(`Worker failed job ${(job as any).id}: ${error}`);
+      logger.error(`Worker failed job ${(job as any).id}: ${error}`);
     });
   } catch (error) {
-    console.log(error);
+    logger.error(error);
   }
 };
 
@@ -48,9 +49,12 @@ async function sendEmail(emailOptions: IEMAIL) {
   };
   // Send the email
   try {
+    if (NODE_ENV == "development") {
+      logger.info("Email sent successfully to :", mailOptions.to);
+    }
     const info = await transporter.sendMail(mailOptions);
-    console.log("Email sent successfully:", info.messageId);
+    logger.info("Email sent successfully:", info);
   } catch (error) {
-    console.log(error);
+    logger.info(error);
   }
 }

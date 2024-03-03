@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import { MONGO_URL } from "../constant/env";
+import logger from "../logger/winston.logger";
 
 mongoose
 .connect(MONGO_URL, {
@@ -8,10 +9,10 @@ mongoose
     useNewUrlParser: true,
   })
   .then(() => {
-    console.log("Database Connected Successfully");
+    logger.info("Database Connected Successfully");
   })
   .catch((err) => {
-    console.log(err, "Database Connection Failed");
+    logger.error(err, "Database Connection Failed");
   });
 
 // Define a function to handle graceful shutdown
@@ -23,7 +24,7 @@ const gracefulShutdown = async (signal:string) => {
     console.log(`Received ${signal}. Exiting gracefully.`);
     process.exit(0); // Successful exit
   } catch (error) {
-    console.error("Error occurred while disconnecting from the database:", error);
+    logger.error("Error occurred while disconnecting from the database:", error);
     process.exit(1); // Exit with a non-zero code to indicate failure
   }
 };

@@ -1,5 +1,6 @@
 import IORedis from "ioredis";
 import { REDIS_HOST, REDIS_PORT } from "../constant/env";
+import logger from "../logger/winston.logger";
 
 const redisOptions = {
   host: REDIS_HOST,
@@ -14,7 +15,7 @@ const redisClient = new IORedis(redisOptions, {
 export default redisClient;
 
 redisClient.on("ready", () => {
-  console.log("Redis is connected !");
+  logger.info("Redis is connected !");
 });
 
 // Define a function to handle graceful shutdown
@@ -26,7 +27,7 @@ const gracefulShutdown = async (signal: string) => {
     console.log(`Received ${signal}. Exiting gracefully.`);
     process.exit(0); // Successful exit
   } catch (error) {
-    console.error(
+   logger.error(
       "Error occurred while disconnecting from the database:",
       error
     );

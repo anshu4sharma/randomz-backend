@@ -42,3 +42,18 @@ export const VALIDATE_CLAIM_REQUEST = z.object({
   }),
 });
 
+export const VALIDATE_ADD_TRANSACTION = z.object({
+  amount: z.number({
+    required_error:"Amount is Required ",
+    invalid_type_error:"Amount must be a Number"
+  }),
+  txid: z.string({
+    required_error: "TransactionId is Required ",
+    invalid_type_error: "TransactionId must be a String",
+  }),
+  account: z.string({
+    required_error:"Account is Required ",
+    invalid_type_error:"Account must be a String"
+  }),
+});
+

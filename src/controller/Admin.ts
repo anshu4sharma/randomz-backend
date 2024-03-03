@@ -7,12 +7,12 @@ import Transaction from "../model/Transaction";
 import { Types } from "mongoose";
 import bcrypt from "bcrypt";
 import { VALIDATE_LOGIN } from "../zod-schema/User.schema";
-import { sendZodError } from "../utils/Users";
-import { ZodError } from "zod";
 import {
   VALIDATE_FIND_TEAM,
   VALIDATE_HANDLE_CLAIM_REQUEST,
 } from "../zod-schema/Admin.schema";
+import { asyncHandler } from "../utils/AsyncHandler";
+import ApiError from "../utils/ApiError";
 export default class UserController {
   // static sendLoginOtp = async (req: Request, res: Response) => {
   //   try {
@@ -50,41 +50,34 @@ export default class UserController {
   //   }
   // };
 
-  static login = async (req: Request, res: Response) => {
-    try {
-      const { email, password } = VALIDATE_LOGIN.parse(req.body);
-      let IsValidme = await Users.findOne({ email: email, role: "admin" });
-      if (!IsValidme) {
-        return res.status(403).json({ message: "Invalid credential" });
+  static login = asyncHandler(async (req: Request, res: Response) => {
+    const { email, password } = VALIDATE_LOGIN.parse(req.body);
+    let IsValidme = await Users.findOne({ email: email, role: "admin" });
+    if (!IsValidme) {
+      throw new ApiError(403, "Invalid credential");
+    } else {
+      let data = {
+        email: IsValidme.email,
+        role: IsValidme.role,
+        _id: IsValidme._id,
+      };
+      let isMatch = await bcrypt.compare(
+        password,
+        IsValidme.password as string
+      );
+      if (isMatch) {
+        const authToken = jwt.sign({ data }, JWT_ACCESS_SECRET, {
+          expiresIn: "10day",
+        });
+        return res.status(200).json({ authToken });
       } else {
-        let data = {
-          email: IsValidme.email,
-          role: IsValidme.role,
-          _id: IsValidme._id,
-        };
-        let isMatch = await bcrypt.compare(
-          password,
-          IsValidme.password as string
-        );
-        if (isMatch) {
-          const authToken = jwt.sign({ data }, JWT_ACCESS_SECRET, {
-            expiresIn: "10day",
-          });
-          return res.status(200).json({ authToken });
-        } else {
-          return res.status(403).json({ message: "Invalid credential" });
-        }
-      }
-    } catch (error) {
-      if (error instanceof ZodError) {
-        sendZodError(res, error);
-      } else {
-        res.status(500).json({ message: (error as Error).message });
+        throw new ApiError(403, "Invalid credential");
       }
     }
-  };
-  static GET_ALL_TRANSACTIONS = async (req: Request, res: Response) => {
-    try {
+  });
+
+  static GET_ALL_TRANSACTIONS = asyncHandler(
+    async (req: Request, res: Response) => {
       const page = parseInt(req.query.page as string) || 1;
       const perPage = parseInt(req.query.perPage as string) || 10;
 
@@ -108,128 +101,122 @@ export default class UserController {
         totalRecords,
         totalPages, // Include total pages in the response
       });
-    } catch (error) {
-      console.log(error);
-      res.status(500).json({ message: "Server error" });
     }
-  };
-  static GET_ALL_USERS = async (req: Request, res: Response) => {
-    try {
-      const page = parseInt(req.query.page as string) || 1;
-      const perPage = parseInt(req.query.perPage as string) || 10;
+  );
 
-      const totalRecords = await Users.countDocuments();
-      const pipeline = [
-        {
-          $lookup: {
-            from: "transactions",
-            localField: "_id",
-            foreignField: "user",
-            as: "result",
-          },
+  static GET_ALL_USERS = asyncHandler(async (req: Request, res: Response) => {
+    const page = parseInt(req.query.page as string) || 1;
+    const perPage = parseInt(req.query.perPage as string) || 10;
+
+    const totalRecords = await Users.countDocuments();
+    const pipeline = [
+      {
+        $lookup: {
+          from: "transactions",
+          localField: "_id",
+          foreignField: "user",
+          as: "result",
         },
-        {
-          $project: {
-            _id: 1,
-            email: 1,
-            result: 1,
-            createdAt: 1,
-            referalId: 1,
-            referedBy: 1,
-            totalPurchase: {
-              $map: {
-                input: "$result",
-                as: "transaction",
-                in: "$$transaction.amount",
-              },
+      },
+      {
+        $project: {
+          _id: 1,
+          email: 1,
+          result: 1,
+          createdAt: 1,
+          referalId: 1,
+          referedBy: 1,
+          totalPurchase: {
+            $map: {
+              input: "$result",
+              as: "transaction",
+              in: "$$transaction.amount",
             },
           },
         },
-        {
-          $project: {
-            _id: 1,
-            email: 1,
-            referalId: 1,
-            referedBy: 1,
-            createdAt: 1,
-            selfpurchase: {
-              $sum: "$totalPurchase",
+      },
+      {
+        $project: {
+          _id: 1,
+          email: 1,
+          referalId: 1,
+          referedBy: 1,
+          createdAt: 1,
+          selfpurchase: {
+            $sum: "$totalPurchase",
+          },
+        },
+      },
+      {
+        $lookup: {
+          from: "users",
+          localField: "referalId",
+          foreignField: "referedBy",
+          as: "result",
+        },
+      },
+      {
+        $project: {
+          _id: 1,
+          email: 1,
+          referalId: 1,
+          referedBy: 1,
+          createdAt: 1,
+          selfpurchase: 1,
+          totalrefferdUser: {
+            $map: {
+              input: "$result",
+              as: "user",
+              in: "$$user._id",
             },
           },
         },
-        {
-          $lookup: {
-            from: "users",
-            localField: "referalId",
-            foreignField: "referedBy",
-            as: "result",
+      },
+      {
+        $addFields: {
+          referedUsers: {
+            $size: "$totalrefferdUser",
           },
         },
-        {
-          $project: {
+      },
+      {
+        $project:
+          /**
+           * specifications: The fields to
+           *   include or exclude.
+           */
+          {
             _id: 1,
             email: 1,
             referalId: 1,
             referedBy: 1,
             createdAt: 1,
             selfpurchase: 1,
-            totalrefferdUser: {
-              $map: {
-                input: "$result",
-                as: "user",
-                in: "$$user._id",
-              },
-            },
+            referedUsers: 1,
           },
-        },
-        {
-          $addFields: {
-            referedUsers: {
-              $size: "$totalrefferdUser",
-            },
-          },
-        },
-        {
-          $project:
-            /**
-             * specifications: The fields to
-             *   include or exclude.
-             */
-            {
-              _id: 1,
-              email: 1,
-              referalId: 1,
-              referedBy: 1,
-              createdAt: 1,
-              selfpurchase: 1,
-              referedUsers: 1,
-            },
-        },
-        {
-          $sort: { createdAt: -1 }, // Sort by createdAt in descending order
-        },
-        {
-          $skip: (page - 1) * perPage,
-        },
-        {
-          $limit: perPage,
-        },
-      ];
-      const result = await Users.aggregate(pipeline as any);
-      res.status(200).json({
-        result,
-        page,
-        perPage,
-        totalRecords, // Include totalCount in the response
-        totalPages: Math.ceil(totalRecords / perPage), // Calculate and include totalPages
-      });
-    } catch (error) {
-      console.error(error);
-      res.status(500).json({ message: "Server error" });
-    }
-  };
-  static GET_ALL_CLAIM_REQUESTS = async (req: Request, res: Response) => {
-    try {
+      },
+      {
+        $sort: { createdAt: -1 }, // Sort by createdAt in descending order
+      },
+      {
+        $skip: (page - 1) * perPage,
+      },
+      {
+        $limit: perPage,
+      },
+    ];
+    const result = await Users.aggregate(pipeline as any);
+    res.status(200).json({
+      result,
+      page,
+      perPage,
+      totalRecords, // Include totalCount in the response
+      totalPages: Math.ceil(totalRecords / perPage), // Calculate and include totalPages
+    });
+  });
+
+  static GET_ALL_CLAIM_REQUESTS = asyncHandler(
+    async (req: Request, res: Response) => {
       const page = parseInt(req.query.page as string) || 1;
       const perPage = parseInt(req.query.perPage as string) || 10;
       const totalCount = await ClaimRequests.countDocuments();
@@ -244,24 +231,20 @@ export default class UserController {
         totalRecords: totalCount,
         totalPages: Math.ceil(totalCount / perPage),
       });
-    } catch (error) {
-      console.error(error);
-      res.status(500).json({ message: "Server error" });
     }
-  };
-  static HANDLE_CLAIM_REQUEST = async (req: Request, res: Response) => {
-    try {
+  );
+
+  static HANDLE_CLAIM_REQUEST = asyncHandler(
+    async (req: Request, res: Response) => {
       const { id, status, transactionId } = VALIDATE_HANDLE_CLAIM_REQUEST.parse(
         req.body
       );
       let data = await ClaimRequests.findById(new Types.ObjectId(id));
       if (!data) {
-        return res.status(400).json({ message: "Invalid id" });
+        throw new ApiError(400, "Invalid id");
       }
       if (data.status == "approved" || data.status == "rejected") {
-        return res
-          .status(400)
-          .json({ message: "Already claim request is processed" });
+        throw new ApiError(400, "Already claim request is processed");
       }
       data.status = status;
       if (status == "approved") {
@@ -284,60 +267,43 @@ export default class UserController {
       } else if (status == "rejected") {
         return res.status(200).json({ message: "Claim request updated" });
       } else {
-        return res.status(403).json({ message: "Invalid transaction status" });
-      }
-    } catch (error) {
-      if (error instanceof ZodError) {
-        sendZodError(res, error);
-      } else {
-        res.status(500).json({ message: (error as Error).message });
+        throw new ApiError(403, "Invalid transaction status");
       }
     }
-  };
-  static FIND_TEAM = async (req: Request, res: Response) => {
-    try {
-      const { id } = VALIDATE_FIND_TEAM.parse(req.params);
-      if (!id) {
-        return res.status(400).json({ message: "Please fill all fields!" });
+  );
+  static FIND_TEAM = asyncHandler(async (req: Request, res: Response) => {
+    const { id } = VALIDATE_FIND_TEAM.parse(req.params);
+    const page = parseInt(req.query.page as string) || 1; // Default to page 1 if not provided
+    const perPage = parseInt(req.query.perPage as string) || 10; // Default to 10 items per page
+    const skip = (page - 1) * perPage;
+    const data = await Users.find(
+      { referedBy: id },
+      {
+        _id: 1,
+        email: 1,
+        createdAt: 1,
+        referedBy: 1,
+        referalId: 1,
+        reward: 1,
       }
-      const page = parseInt(req.query.page as string) || 1; // Default to page 1 if not provided
-      const perPage = parseInt(req.query.perPage as string) || 10; // Default to 10 items per page
-      const skip = (page - 1) * perPage;
-      const data = await Users.find(
-        { referedBy: id },
-        {
-          _id: 1,
-          email: 1,
-          createdAt: 1,
-          referedBy: 1,
-          referalId: 1,
-          reward: 1,
-        }
-      )
-        .skip(skip)
-        .limit(perPage);
+    )
+      .skip(skip)
+      .limit(perPage);
 
-      const totalCount = await Users.countDocuments({
-        referedBy: id,
+    const totalCount = await Users.countDocuments({
+      referedBy: id,
+    });
+
+    if (data.length > 0) {
+      return res.status(200).json({
+        data,
+        page,
+        perPage,
+        totalRecords: totalCount,
+        totalPages: Math.ceil(totalCount / perPage),
       });
-
-      if (data.length > 0) {
-        return res.status(200).json({
-          data,
-          page,
-          perPage,
-          totalRecords: totalCount,
-          totalPages: Math.ceil(totalCount / perPage),
-        });
-      } else {
-        return res.status(400).json({ message: "No team found" });
-      }
-    } catch (error) {
-      if (error instanceof ZodError) {
-        sendZodError(res, error);
-      } else {
-        res.status(500).json({ message: (error as Error).message });
-      }
+    } else {
+      throw new ApiError(400, "No team found");
     }
-  };
+  });
 }

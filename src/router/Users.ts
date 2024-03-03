@@ -16,15 +16,6 @@ router.post("/reset-password", UserController.resetPassword);
 // verify otp and update password
 router.put("/verify-reset-otp", UserController.verify_Reset_Password_Otp);
 
-// FIXME: need to remove ( Not used anywhere)
-router.get("/fetch-user", authUser, UserController.fetch_User_details);
-
-// FIXME: need to remove ( Not used anywhere)
-router.get("/get-all-users", UserController.GET_ALL_USERS);
-
-// FIXME: need to remove ( Not used anywhere)
-router.put("/block/:userId", UserController.BLOCK_USER_ACCOUNT);
-
 router.post("/addTransaction", authUser, UserController.addTransaction);
 
 router.get("/gettotal", authUser, UserController.GET_TOTAL_PURCHASE_AMOUNT);
