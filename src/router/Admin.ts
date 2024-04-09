@@ -13,6 +13,10 @@ router.post("/login", AdminController.login);
 
 router.get("/get-all-users", isAdmin, AdminController.GET_ALL_USERS);
 
+router.get("/get-all-users-without-team", isAdmin, AdminController.GET_ALL_USERS_WITHOUT_TEAM);
+
+router.get("/get-all-users-with-team", isAdmin, AdminController.GET_ALL_USERS_WITH_TEAM);
+
 router.get("/get-all-transactions", isAdmin, AdminController.GET_ALL_TRANSACTIONS);
 
 router.get("/get-all-claimrequest", isAdmin, AdminController.GET_ALL_CLAIM_REQUESTS);

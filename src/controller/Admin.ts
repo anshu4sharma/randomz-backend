@@ -104,116 +104,265 @@ export default class UserController {
     }
   );
 
-  static GET_ALL_USERS = asyncHandler(async (req: Request, res: Response) => {
-    const page = parseInt(req.query.page as string) || 1;
-    const perPage = parseInt(req.query.perPage as string) || 10;
+  static GET_ALL_USERS = asyncHandler(
+    async (req: Request, res: Response) => {
+      const page = parseInt(req.query.page as string) || 1;
+      const perPage = parseInt(req.query.perPage as string) || 10;
 
-    const totalRecords = await Users.countDocuments();
-    const pipeline = [
-      {
-        $lookup: {
-          from: "transactions",
-          localField: "_id",
-          foreignField: "user",
-          as: "result",
+      const totalRecords = await Users.countDocuments();
+      const result = await Users.find({})
+      res.status(200).json({
+        result,
+        page,
+        perPage,
+        totalRecords, // Include totalCount in the response
+        totalPages: Math.ceil(totalRecords / perPage), // Calculate and include totalPages
+      });
+    }
+  );
+  static GET_ALL_USERS_WITHOUT_TEAM = asyncHandler(
+    async (req: Request, res: Response) => {
+      const page = parseInt(req.query.page as string) || 1;
+      const perPage = parseInt(req.query.perPage as string) || 10;
+
+      const totalRecords = await Users.countDocuments();
+      const pipeline = [
+        {
+          $lookup: {
+            from: "transactions",
+            localField: "_id",
+            foreignField: "user",
+            as: "result",
+          },
         },
-      },
-      {
-        $project: {
-          _id: 1,
-          email: 1,
-          result: 1,
-          createdAt: 1,
-          referalId: 1,
-          referedBy: 1,
-          totalPurchase: {
-            $map: {
-              input: "$result",
-              as: "transaction",
-              in: "$$transaction.amount",
+        {
+          $project: {
+            _id: 1,
+            email: 1,
+            result: 1,
+            createdAt: 1,
+            referalId: 1,
+            referedBy: 1,
+            totalPurchase: {
+              $map: {
+                input: "$result",
+                as: "transaction",
+                in: "$$transaction.amount",
+              },
             },
           },
         },
-      },
-      {
-        $project: {
-          _id: 1,
-          email: 1,
-          referalId: 1,
-          referedBy: 1,
-          createdAt: 1,
-          selfpurchase: {
-            $sum: "$totalPurchase",
-          },
-        },
-      },
-      {
-        $lookup: {
-          from: "users",
-          localField: "referalId",
-          foreignField: "referedBy",
-          as: "result",
-        },
-      },
-      {
-        $project: {
-          _id: 1,
-          email: 1,
-          referalId: 1,
-          referedBy: 1,
-          createdAt: 1,
-          selfpurchase: 1,
-          totalrefferdUser: {
-            $map: {
-              input: "$result",
-              as: "user",
-              in: "$$user._id",
+        {
+          $project: {
+            _id: 1,
+            email: 1,
+            referalId: 1,
+            referedBy: 1,
+            createdAt: 1,
+            selfpurchase: {
+              $sum: "$totalPurchase",
             },
           },
         },
-      },
-      {
-        $addFields: {
-          referedUsers: {
-            $size: "$totalrefferdUser",
+        {
+          $lookup: {
+            from: "users",
+            localField: "referalId",
+            foreignField: "referedBy",
+            as: "result",
           },
         },
-      },
-      {
-        $project:
-          /**
-           * specifications: The fields to
-           *   include or exclude.
-           */
-          {
+        {
+          $match: {
+            result: {
+              $exists: true,
+              $size: 0,
+            },
+          },
+        },
+        {
+          $project: {
             _id: 1,
             email: 1,
             referalId: 1,
             referedBy: 1,
             createdAt: 1,
             selfpurchase: 1,
-            referedUsers: 1,
           },
-      },
-      {
-        $sort: { createdAt: -1 }, // Sort by createdAt in descending order
-      },
-      {
-        $skip: (page - 1) * perPage,
-      },
-      {
-        $limit: perPage,
-      },
-    ];
-    const result = await Users.aggregate(pipeline as any);
-    res.status(200).json({
-      result,
-      page,
-      perPage,
-      totalRecords, // Include totalCount in the response
-      totalPages: Math.ceil(totalRecords / perPage), // Calculate and include totalPages
-    });
-  });
+        },
+        {
+          $sort: { createdAt: -1 }, // Sort by createdAt in descending order
+        },
+        {
+          $skip: (page - 1) * perPage,
+        },
+        {
+          $limit: perPage,
+        },
+      ];
+      const result = await Users.aggregate(pipeline as any);
+      res.status(200).json({
+        result,
+        page,
+        perPage,
+        totalRecords, // Include totalCount in the response
+        totalPages: Math.ceil(totalRecords / perPage), // Calculate and include totalPages
+      });
+    }
+  );
+  static GET_ALL_USERS_WITH_TEAM = asyncHandler(
+    async (req: Request, res: Response) => {
+      const page = parseInt(req.query.page as string) || 1;
+      const perPage = parseInt(req.query.perPage as string) || 10;
+
+      const totalRecords = await Users.countDocuments();
+      const pipeline = [
+        {
+          $lookup: {
+            from: "transactions",
+            localField: "_id",
+            foreignField: "user",
+            as: "result",
+          },
+        },
+        {
+          $project: {
+            _id: 1,
+            email: 1,
+            result: 1,
+            createdAt: 1,
+            referalId: 1,
+            referedBy: 1,
+            totalPurchase: {
+              $map: {
+                input: "$result",
+                as: "transaction",
+                in: "$$transaction.amount",
+              },
+            },
+          },
+        },
+        {
+          $project: {
+            _id: 1,
+            email: 1,
+            referalId: 1,
+            referedBy: 1,
+            createdAt: 1,
+            selfpurchase: {
+              $sum: "$totalPurchase",
+            },
+          },
+        },
+        {
+          $lookup: {
+            from: "users",
+            localField: "referalId",
+            foreignField: "referedBy",
+            as: "result",
+          },
+        },
+        {
+          $project: {
+            _id: 1,
+            email: 1,
+            referalId: 1,
+            referedBy: 1,
+            createdAt: 1,
+            selfpurchase: 1,
+            totalrefferdUser: {
+              $map: {
+                input: "$result",
+                as: "user",
+                in: "$$user._id",
+              },
+            },
+          },
+        },
+        {
+          $addFields: {
+            referedUsers: {
+              $size: "$totalrefferdUser",
+            },
+          },
+        },
+        {
+          $unwind: {
+            path: "$totalrefferdUser",
+          },
+        },
+        {
+          $lookup: {
+            from: "transactions",
+            localField: "totalrefferdUser",
+            foreignField: "user",
+            as: "result",
+          },
+        },
+        {
+          $addFields: {
+            totalSumofAmount: {
+              $map: {
+                input: "$result",
+                as: "user",
+                in: "$$user.amount",
+              },
+            },
+          },
+        },
+        {
+          $addFields: {
+            totalReferedUsersPurchaseSum: {
+              $sum: "$totalSumofAmount",
+            },
+          },
+        },
+        {
+          $group: {
+            _id: "$_id",
+            email: {
+              $first: "$email",
+            },
+            referalId: {
+              $first: "$referalId",
+            },
+            referedBy: {
+              $first: "$referedBy",
+            },
+            createdAt: {
+              $first: "$createdAt",
+            },
+            selfpurchase: {
+              $first: "$selfpurchase",
+            },
+            referedUsers: {
+              $first: "$referedUsers",
+            },
+            totalReferedUsersPurchaseSum: {
+              $sum: "$totalReferedUsersPurchaseSum",
+            },
+          },
+        },
+        {
+          $sort: { createdAt: -1 }, // Sort by createdAt in descending order
+        },
+        {
+          $skip: (page - 1) * perPage,
+        },
+        {
+          $limit: perPage,
+        },
+      ];
+      const result = await Users.aggregate(pipeline as any);
+      res.status(200).json({
+        result,
+        page,
+        perPage,
+        totalRecords, // Include totalCount in the response
+        totalPages: Math.ceil(totalRecords / perPage), // Calculate and include totalPages
+      });
+    }
+  );
 
   static GET_ALL_CLAIM_REQUESTS = asyncHandler(
     async (req: Request, res: Response) => {
